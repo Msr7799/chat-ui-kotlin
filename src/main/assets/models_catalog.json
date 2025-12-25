@@ -1,0 +1,1116 @@
+{
+  "metadata": {
+    "total_models": 123,
+    "last_updated": "2024-12-14",
+    "source": "HuggingFace Free Models"
+  },
+  "models": [
+    {
+      "id": "Omni",
+      "name": "Omni Router",
+      "company": "HuggingFace",
+      "features": "Auto-selects best model for your request",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "zai-org/GLM-4.6V-Flash",
+      "name": "GLM 4.6V Flash",
+      "company": "Zhipu AI",
+      "features": "Fast vision model",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "zai-org/GLM-4.6V",
+      "name": "GLM 4.6V",
+      "company": "Zhipu AI",
+      "features": "Vision-language model",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "ServiceNow-AI/Apriel-1.6-15b-Thinker",
+      "name": "Apriel 1.6 15B Thinker",
+      "company": "ServiceNow",
+      "features": "Reasoning model",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "EssentialAI/nj-1-instruct",
+      "name": "NJ-1 Instruct",
+      "company": "EssentialAI",
+      "features": "Instruction following",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V3.2",
+      "name": "DeepSeek V3.2",
+      "company": "DeepSeek",
+      "features": "Latest DeepSeek, strong reasoning",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "zai-org/AutoGLM-Phone-9B-Multilingual",
+      "name": "AutoGLM Phone 9B",
+      "company": "Zhipu AI",
+      "features": "Mobile optimized, multilingual",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "meta-llama/Llama-3.1-8B-Instruct",
+      "name": "Llama 3.1 8B",
+      "company": "Meta",
+      "features": "Fast and efficient",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "openai/gpt-oss-20b",
+      "name": "GPT OSS 20B",
+      "company": "OpenAI",
+      "features": "Open source GPT",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "zai-org/GLM-4.6",
+      "name": "GLM 4.6",
+      "company": "Zhipu AI",
+      "features": "Latest GLM text model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-8B-Instruct-2507",
+      "name": "Qwen3 8B Instruct",
+      "company": "Alibaba",
+      "features": "Efficient instruction model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V3.2-Exp",
+      "name": "DeepSeek V3.2 Exp",
+      "company": "DeepSeek",
+      "features": "Experimental version",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "meta-llama/Llama-3.2-1B-Instruct",
+      "name": "Llama 3.2 1B",
+      "company": "Meta",
+      "features": "Ultra lightweight",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "allenai/Olmo-3-32B-Think",
+      "name": "OLMo 3 32B Think",
+      "company": "Allen AI",
+      "features": "Reasoning focused",
+      "vision": false,
+      "thinking": true,
+      "tools": false
+    },
+    {
+      "id": "Qwen/Qwen3-VL-30B-A3B-Instruct",
+      "name": "Qwen3 VL 30B",
+      "company": "Alibaba",
+      "features": "Vision-language MoE",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "name": "Qwen3 30B A3B",
+      "company": "Alibaba",
+      "features": "MoE architecture",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen2.5-7B-Instruct",
+      "name": "Qwen2.5 7B",
+      "company": "Alibaba",
+      "features": "Balanced performance",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-8B",
+      "name": "Qwen3 8B",
+      "company": "Alibaba",
+      "features": "Base model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen2.5-VL-7B-Instruct",
+      "name": "Qwen2.5 VL 7B",
+      "company": "Alibaba",
+      "features": "Vision model",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "meta-llama/Llama-3.3-70B-Instruct",
+      "name": "Llama 3.3 70B",
+      "company": "Meta",
+      "features": "Latest Llama flagship",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "meta-llama/Llama-3.2-3B-Instruct",
+      "name": "Llama 3.2 3B",
+      "company": "Meta",
+      "features": "Small efficient model",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+      "name": "Qwen3 Coder 30B",
+      "company": "Alibaba",
+      "features": "Code specialist",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "google/gemma-3-27b-it",
+      "name": "Gemma 3 27B",
+      "company": "Google",
+      "features": "Latest Gemma",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-4B-Thinking-2507",
+      "name": "Qwen3 4B Thinking",
+      "company": "Alibaba",
+      "features": "Small reasoning model",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-Next-80B-A3B-Instruct",
+      "name": "Qwen3 Next 80B",
+      "company": "Alibaba",
+      "features": "Next-gen MoE",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "zai-org/GLM-4.6-FP8",
+      "name": "GLM 4.6 FP8",
+      "company": "Zhipu AI",
+      "features": "Quantized for efficiency",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-VL-235B-A22B-Instruct",
+      "name": "Qwen3 VL 235B",
+      "company": "Alibaba",
+      "features": "Large vision MoE",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "meta-llama/Meta-Llama-3-8B-Instruct",
+      "name": "Llama 3 8B",
+      "company": "Meta",
+      "features": "Stable Llama 3",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "moonshotai/Kimi-K2-Instruct-0905",
+      "name": "Kimi K2",
+      "company": "Moonshot AI",
+      "features": "1T MoE, creative",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-14B",
+      "name": "Qwen3 14B",
+      "company": "Alibaba",
+      "features": "Mid-size model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-R1",
+      "name": "DeepSeek R1",
+      "company": "DeepSeek",
+      "features": "Reasoning specialist",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-VL-235B-A22B-Thinking",
+      "name": "Qwen3 VL 235B Thinking",
+      "company": "Alibaba",
+      "features": "Vision + reasoning",
+      "vision": true,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Sao10K/L3-8B-Stheno-v3.2",
+      "name": "Stheno v3.2 8B",
+      "company": "Sao10K",
+      "features": "Creative writing",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "zai-org/GLM-4.5-Air",
+      "name": "GLM 4.5 Air",
+      "company": "Zhipu AI",
+      "features": "Lightweight GLM",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "google/gemma-2-2b-it",
+      "name": "Gemma 2 2B",
+      "company": "Google",
+      "features": "Tiny Gemma",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "Qwen/Qwen3-30B-A3B",
+      "name": "Qwen3 30B A3B Base",
+      "company": "Alibaba",
+      "features": "Base MoE model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "swiss-ai/Aperius-8B-Instruct-2509",
+      "name": "Aperius 8B",
+      "company": "Swiss AI",
+      "features": "Multilingual",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-VL-32B-Instruct",
+      "name": "Qwen3 VL 32B",
+      "company": "Alibaba",
+      "features": "Vision model",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B",
+      "name": "Qwen3 235B A22B",
+      "company": "Alibaba",
+      "features": "Large MoE base",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "nvidia/NVIDIA-Nemotron-Nano-12B-v2",
+      "name": "Nemotron Nano 12B",
+      "company": "NVIDIA",
+      "features": "Fast inference",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B",
+      "name": "DeepSeek R1 Qwen3 8B",
+      "company": "DeepSeek",
+      "features": "Distilled reasoning",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+      "name": "Qwen3 235B Instruct",
+      "company": "Alibaba",
+      "features": "Flagship MoE",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-Prover-V2-671B",
+      "name": "DeepSeek Prover V2",
+      "company": "DeepSeek",
+      "features": "Math proofs",
+      "vision": false,
+      "thinking": true,
+      "tools": false
+    },
+    {
+      "id": "zai-org/GLM-4.5",
+      "name": "GLM 4.5",
+      "company": "Zhipu AI",
+      "features": "Stable GLM",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "baidu/ERNIE-4.5-0.3B-PT",
+      "name": "ERNIE 4.5 0.3B",
+      "company": "Baidu",
+      "features": "Ultra lightweight",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "CohereLabs/c4ai-command-a-03-2025",
+      "name": "Command A",
+      "company": "Cohere",
+      "features": "RAG optimized",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "baidu/ERNIE-4.5-21B-A3B-PT",
+      "name": "ERNIE 4.5 21B",
+      "company": "Baidu",
+      "features": "Chinese specialist",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-R1-Distill-Llama-32B",
+      "name": "DeepSeek R1 Distill 32B",
+      "company": "DeepSeek",
+      "features": "Distilled reasoning",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "baichuan-inc/Baichuan-M2-32B",
+      "name": "Baichuan M2 32B",
+      "company": "Baichuan",
+      "features": "Chinese/English",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "tokyotech-llm/Llama-3.3-Swallow-70B-Instruct-v0.4",
+      "name": "Swallow 70B",
+      "company": "Tokyo Tech",
+      "features": "Japanese specialist",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "baidu/ERNIE-4.5-VL-424B-A47B-Base-PT",
+      "name": "ERNIE 4.5 VL 424B",
+      "company": "Baidu",
+      "features": "Large vision model",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen2.5-Coder-3B-Instruct",
+      "name": "Qwen2.5 Coder 3B",
+      "company": "Alibaba",
+      "features": "Small code model",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "ntpndeie/WizardLM-2-8x22B",
+      "name": "WizardLM 2 8x22B",
+      "company": "WizardLM",
+      "features": "Large MoE",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "CohereLabs/",
+      "name": "Cohere Labs",
+      "company": "Cohere",
+      "features": "Various models",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "misingapore/Qwen-SEA-LION-v4-32B-IT",
+      "name": "SEA-LION v4 32B",
+      "company": "AI Singapore",
+      "features": "Southeast Asian languages",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "baidu/ERNIE-4.5-300B-A47B-Base-PT",
+      "name": "ERNIE 4.5 300B",
+      "company": "Baidu",
+      "features": "Large Chinese model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepcogito/cogito-v2-preview-llama-70B",
+      "name": "Cogito V2 70B",
+      "company": "DeepCogito",
+      "features": "Reasoning model",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "CohereLabs/command-a-translate-08-2025",
+      "name": "Command A Translate",
+      "company": "Cohere",
+      "features": "Translation specialist",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "dicta-il/DictaLM-3.0-24B-Thinking",
+      "name": "DictaLM 3.0 24B",
+      "company": "Dicta IL",
+      "features": "Hebrew specialist, thinking",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "deepcogito/cogito-v2-preview-llama-405B",
+      "name": "Cogito V2 405B",
+      "company": "DeepCogito",
+      "features": "Large reasoning",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "PrimeIntellect/INTELLECT-3-FP8",
+      "name": "INTELLECT 3 FP8",
+      "company": "PrimeIntellect",
+      "features": "Quantized model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-R1-0528",
+      "name": "DeepSeek R1 0528",
+      "company": "DeepSeek",
+      "features": "Latest R1",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen2.5-VL-32B-Instruct",
+      "name": "Qwen2.5 VL 32B",
+      "company": "Alibaba",
+      "features": "Vision model",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepcogito/cogito-671b-v2.1",
+      "name": "Cogito 671B v2.1",
+      "company": "DeepCogito",
+      "features": "Massive reasoning",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "zai-org/GLM-4.5V",
+      "name": "GLM 4.5V",
+      "company": "Zhipu AI",
+      "features": "Vision model",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V3.1-Terminus",
+      "name": "DeepSeek V3.1 Terminus",
+      "company": "DeepSeek",
+      "features": "Terminal model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen2.5-72B-Instruct",
+      "name": "Qwen2.5 72B",
+      "company": "Alibaba",
+      "features": "Large instruction",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
+      "name": "Qwen3 235B Thinking",
+      "company": "Alibaba",
+      "features": "Large reasoning MoE",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen2.5-VL-72B-Instruct",
+      "name": "Qwen2.5 VL 72B",
+      "company": "Alibaba",
+      "features": "Large vision model",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "openai/gpt-oss-safeguard-20b",
+      "name": "GPT OSS Safeguard 20B",
+      "company": "OpenAI",
+      "features": "Safety focused",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+      "name": "Qwen2.5 Coder 7B",
+      "company": "Alibaba",
+      "features": "Code model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-30B-A3B-Thinking-2507",
+      "name": "Qwen3 30B Thinking",
+      "company": "Alibaba",
+      "features": "Reasoning MoE",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Qwen/QwQ-32B",
+      "name": "QwQ 32B",
+      "company": "Alibaba",
+      "features": "Question answering",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-32B",
+      "name": "Qwen3 32B",
+      "company": "Alibaba",
+      "features": "Dense model",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V3",
+      "name": "DeepSeek V3",
+      "company": "DeepSeek",
+      "features": "Stable V3",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "zai-org/GLM-4.5V-FP8",
+      "name": "GLM 4.5V FP8",
+      "company": "Zhipu AI",
+      "features": "Quantized vision",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-235B-A22B-FP8",
+      "name": "Qwen3 235B FP8",
+      "company": "Alibaba",
+      "features": "Quantized MoE",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "CohereLabs/c4ai-command-r7b-12-2024",
+      "name": "Command R 7B",
+      "company": "Cohere",
+      "features": "Fast RAG",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "zai-org/GLM-4-32B-0414",
+      "name": "GLM 4 32B",
+      "company": "Zhipu AI",
+      "features": "Large GLM",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "meta-llama/Meta-Llama-3-70B-Instruct",
+      "name": "Llama 3 70B",
+      "company": "Meta",
+      "features": "Large Llama 3",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "marin-community/marin-8b-instruct",
+      "name": "Marin 8B",
+      "company": "Marin Community",
+      "features": "Community model",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "misingapore/Gemma-SEA-LION-v4-27b-IT",
+      "name": "Gemma SEA-LION 27B",
+      "company": "AI Singapore",
+      "features": "Southeast Asian",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "MiniMaxAI/MiniMax-M1-80k",
+      "name": "MiniMax M1 80K",
+      "company": "MiniMax",
+      "features": "Long context 80K",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "zai-org/GLM-4.5-Air-FP8",
+      "name": "GLM 4.5 Air FP8",
+      "company": "Zhipu AI",
+      "features": "Quantized lightweight",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "allenai/Olmo-3-7B-Think",
+      "name": "OLMo 3 7B Think",
+      "company": "Allen AI",
+      "features": "Small reasoning",
+      "vision": false,
+      "thinking": true,
+      "tools": false
+    },
+    {
+      "id": "deepseek-ai/",
+      "name": "DeepSeek Models",
+      "company": "DeepSeek",
+      "features": "Various",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-V3.1",
+      "name": "DeepSeek V3.1",
+      "company": "DeepSeek",
+      "features": "Updated V3",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "katanemo/Arch-Router-1.5B",
+      "name": "Arch Router 1.5B",
+      "company": "Katanemo",
+      "features": "Model router",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+      "name": "Qwen3 Coder 480B",
+      "company": "Alibaba",
+      "features": "Large code MoE",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen2.5-Coder-32B-Instruct",
+      "name": "Qwen2.5 Coder 32B",
+      "company": "Alibaba",
+      "features": "Code specialist",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen3-Next-80B-A3B-Thinking",
+      "name": "Qwen3 Next 80B Thinking",
+      "company": "Alibaba",
+      "features": "Reasoning MoE",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+      "name": "DeepSeek R1 Distill 7B",
+      "company": "DeepSeek",
+      "features": "Small reasoning",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "google/gemma-2-9b-it",
+      "name": "Gemma 2 9B",
+      "company": "Google",
+      "features": "Balanced Gemma",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "zai-org/GLM-4.1V-9B-Thinking",
+      "name": "GLM 4.1V 9B Thinking",
+      "company": "Zhipu AI",
+      "features": "Vision reasoning",
+      "vision": true,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Sao10K/L3-70B-Euryale-v2.1",
+      "name": "Euryale v2.1 70B",
+      "company": "Sao10K",
+      "features": "Creative writing",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "NousResearch/Hermes-4-70B",
+      "name": "Hermes 4 70B",
+      "company": "Nous Research",
+      "features": "Roleplay, tools",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "HuggingFace7B/SmolLM3-3B",
+      "name": "SmolLM3 3B",
+      "company": "HuggingFace",
+      "features": "Tiny efficient",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "allenai/Olmo-3-7B-Instruct",
+      "name": "OLMo 3 7B Instruct",
+      "company": "Allen AI",
+      "features": "Open model",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "Qwen/Qwen3-8B-Instruct",
+      "name": "Qwen3 8B Instruct Base",
+      "company": "Alibaba",
+      "features": "Instruction tuned",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Kimi-K2-Instruct",
+      "name": "Kimi K2 Instruct Alt",
+      "company": "Moonshot AI",
+      "features": "Alternative K2",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "mistralai/Mistral-Small-3.1-24B-Instruct",
+      "name": "Mistral Small 3.1",
+      "company": "Mistral AI",
+      "features": "Efficient production",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "mistralai/Pixtral-Large-Instruct-2411",
+      "name": "Pixtral Large",
+      "company": "Mistral AI",
+      "features": "Vision model",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+      "name": "Mixtral 8x7B",
+      "company": "Mistral AI",
+      "features": "Popular MoE",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "mistralai/Codestral-22B-v0.1",
+      "name": "Codestral 22B",
+      "company": "Mistral AI",
+      "features": "Code specialist",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "microsoft/Phi-4",
+      "name": "Phi 4",
+      "company": "Microsoft",
+      "features": "Latest Phi",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "microsoft/Phi-3.5-mini-instruct",
+      "name": "Phi 3.5 Mini",
+      "company": "Microsoft",
+      "features": "Ultra compact",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",
+      "name": "Nemotron 70B",
+      "company": "NVIDIA",
+      "features": "High quality",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "CohereLabs/aya-expanse-32b",
+      "name": "Aya Expanse 32B",
+      "company": "Cohere",
+      "features": "Multilingual",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "CohereLabs/aya-vision-32b",
+      "name": "Aya Vision 32B",
+      "company": "Cohere",
+      "features": "Multilingual vision",
+      "vision": true,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "01-ai/Yi-1.5-34B-Chat",
+      "name": "Yi 1.5 34B",
+      "company": "01.AI",
+      "features": "Bilingual CN/EN",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "internlm/internlm3-8b-instruct",
+      "name": "InternLM 3 8B",
+      "company": "InternLM",
+      "features": "Chinese/English",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "Tencent-Hunyuan/Hunyuan-A13B-Instruct",
+      "name": "Hunyuan A13B",
+      "company": "Tencent",
+      "features": "Bilingual",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "THUDM/GLM-Z1-32B-0414",
+      "name": "GLM Z1 32B",
+      "company": "THUDM",
+      "features": "Reasoning GLM",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "moonshotai/Kimi-K2-Thinking",
+      "name": "Kimi K2 Thinking",
+      "company": "Moonshot AI",
+      "features": "Reasoning mode",
+      "vision": false,
+      "thinking": true,
+      "tools": true
+    },
+    {
+      "id": "Qwen/Qwen2.5-VL-3B-Instruct",
+      "name": "Qwen2.5 VL 3B",
+      "company": "Alibaba",
+      "features": "Small vision",
+      "vision": true,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "mistralai/Pixtral-12B-2409",
+      "name": "Pixtral 12B",
+      "company": "Mistral AI",
+      "features": "Lightweight vision",
+      "vision": true,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "Qwen/Qwen3-1.7B",
+      "name": "Qwen3 1.7B",
+      "company": "Alibaba",
+      "features": "Compact model",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "Qwen/Qwen3-0.6B",
+      "name": "Qwen3 0.6B",
+      "company": "Alibaba",
+      "features": "Ultra lightweight",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "Qwen/Qwen3-4B",
+      "name": "Qwen3 4B",
+      "company": "Alibaba",
+      "features": "Small efficient",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "google/gemma-3-12b-it",
+      "name": "Gemma 3 12B",
+      "company": "Google",
+      "features": "Mid-size Gemma",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "google/gemma-3-4b-it",
+      "name": "Gemma 3 4B",
+      "company": "Google",
+      "features": "Lightweight Gemma",
+      "vision": false,
+      "thinking": false,
+      "tools": false
+    },
+    {
+      "id": "meta-llama/Llama-3.1-70B-Instruct",
+      "name": "Llama 3.1 70B",
+      "company": "Meta",
+      "features": "Reliable workhorse",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    },
+    {
+      "id": "mistralai/Mistral-Nemo-Instruct-2407",
+      "name": "Mistral Nemo",
+      "company": "Mistral AI",
+      "features": "Apache 2.0 license",
+      "vision": false,
+      "thinking": false,
+      "tools": true
+    }
+  ]
+}

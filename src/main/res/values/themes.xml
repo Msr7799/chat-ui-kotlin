@@ -1,0 +1,27 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.Chatui" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary_blue</item>
+        <item name="colorSecondary">@color/primary_indigo</item>
+        <item name="android:statusBarColor">@color/dark_background</item>
+        <item name="android:navigationBarColor">@color/dark_background</item>
+    </style>
+
+    <style name="Theme.Chatui" parent="Base.Theme.Chatui" />
+
+    <!-- Material3 Button Styles -->
+    <style name="Widget.Material3.Button.OutlinedButton" parent="Widget.AppCompat.Button.Borderless">
+        <item name="android:textColor">@color/primary_blue</item>
+        <item name="android:background">@drawable/outlined_button_background</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+    </style>
+
+    <!-- Splash Screen Theme -->
+    <style name="Theme.Chatui.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_branding</item>
+        <item name="postSplashScreenTheme">@style/Theme.Chatui</item>
+    </style>
+</resources>

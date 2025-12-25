@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Chat UI</string>
+    <string name="new_chat">محادثة جديدة</string>
+    <string name="settings">الإعدادات</string>
+    <string name="models">النماذج</string>
+    <string name="gallery">المعرض</string>
+    <string name="ask_anything">اسأل أي شيء...</string>
+    <string name="welcome_title">مرحباً بك في Chat UI</string>
+    <string name="welcome_subtitle">ابدأ محادثة بكتابة رسالة أدناه.\nأنا هنا لمساعدتك في أي شيء تحتاجه.</string>
+    <string name="try_asking">جرب أن تسأل...</string>
+    <string name="suggestion_quantum">اشرح الحوسبة الكمية بعبارات بسيطة</string>
+    <string name="suggestion_email">ساعدني في كتابة بريد إلكتروني احترافي</string>
+    <string name="suggestion_creative">أعطني أفكاراً لمشروع إبداعي</string>
+    <string name="suggestion_debug">صحح هذا الكود لي</string>
+
+    <!-- Settings -->
+    <string name="profile">الملف الشخصي</string>
+    <string name="manage_account">إدارة حسابك</string>
+    <string name="account">الحساب</string>
+    <string name="api_configuration">إعدادات API</string>
+    <string name="configure_api">تكوين API متوافق مع OpenAI</string>
+    <string name="appearance">المظهر</string>
+    <string name="theme">السمة</string>
+    <string name="dark_mode">الوضع الداكن</string>
+    <string name="light_mode">الوضع الفاتح</string>
+    <string name="language">اللغة</string>
+    <string name="english">الإنجليزية</string>
+    <string name="notifications">الإشعارات</string>
+    <string name="push_notifications">إشعارات الدفع</string>
+    <string name="receive_notifications">تلقي الإشعارات</string>
+    <string name="data_storage">البيانات والتخزين</string>
+    <string name="storage">التخزين</string>
+    <string name="manage_cached_data">إدارة البيانات المؤقتة</string>
+    <string name="clear_conversations">مسح المحادثات</string>
+    <string name="delete_all_chat_history">حذف كل سجل المحادثات</string>
+    <string name="clear_conversations_confirm">هل أنت متأكد أنك تريد حذف جميع المحادثات؟ لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="delete_all">حذف الكل</string>
+    <string name="cleared_conversations">تم مسح %d محادثة</string>
+    <string name="privacy_security">الخصوصية والأمان</string>
+    <string name="privacy_policy">سياسة الخصوصية</string>
+    <string name="about">حول</string>
+    <string name="about_chat_ui">حول Chat UI</string>
+    <string name="version">الإصدار</string>
+    <string name="developer">المطور</string>
+    <string name="developer_name">محمد سعود الرميحي</string>
+    <string name="report_issues">الإبلاغ عن المشاكل</string>
+    <string name="developer_email">alromaihi2224@gmail.com</string>
+    <string name="features">الميزات</string>
+    <string name="feature_ai">محادثات مدعومة بالذكاء الاصطناعي</string>
+    
+    <!-- API Settings -->
+    <string name="api_provider">مزود API</string>
+    <string name="api_key">مفتاح API</string>
+    <string name="base_url">الرابط الأساسي</string>
+    <string name="default_model">النموذج الافتراضي</string>
+    <string name="test_connection">اختبار</string>
+    <string name="save_settings">حفظ</string>
+
+    <!-- Google AI Studio (API Key help) -->
+    <string name="google_ai_studio_api_key_note">لإنشاء مفتاح Google AI Studio API انتقل إلى Google AI Studio.</string>
+    <string name="google_ai_studio_api_keys_link_label">فتح صفحة مفاتيح Google AI Studio API</string>
+    <string name="google_ai_studio_api_keys_url">https://aistudio.google.com/app/apikey</string>
+    
+    <!-- تنبيهات إعداد المزود -->
+    <string name="huggingface_setup_title">يتطلب رمز HuggingFace</string>
+    <string name="huggingface_setup_message">لاستخدام HuggingFace Router API، تحتاج إلى رمز API.\n\n1. قم بزيارة huggingface.co/settings/tokens\n2. أنشئ رمزاً جديداً\n3. انسخه والصقه أدناه\n\nهل لديك رمز بالفعل؟</string>
+    <string name="huggingface_setup_positive">لدي رمز</string>
+    <string name="huggingface_setup_negative">الحصول على رمز</string>
+    <string name="huggingface_token_url">https://huggingface.co/settings/tokens</string>
+    
+    <string name="google_setup_title">إعداد Google Vertex AI</string>
+    <string name="google_setup_not_signed_in">لاستخدام Google Vertex AI، تحتاج إلى:\n\n1. تسجيل الدخول بحساب Google الخاص بك\n2. تفعيل Vertex AI API في مشروعك\n3. تكوين إعدادات مشروعك\n\nهل تريد تسجيل الدخول الآن؟</string>
+    <string name="google_setup_sign_in">تسجيل الدخول بحساب Google</string>
+    <string name="google_setup_cancel">إلغاء</string>
+    <string name="google_setup_signed_in">أنت مسجل الدخول كـ %1$s\n\nسيتم تحديث رمز الوصول تلقائياً.\n\nمعرّف المشروع: %2$s\nالموقع: %3$s</string>
+    <string name="google_project_id_hint">معرّف-مشروعك</string>
+    <string name="google_location_hint">us-central1</string>
+    <string name="google_model_hint">gemini-2.0-flash-001</string>
+    
+    <!-- معلومات المزود -->
+    <string name="provider_info_title">تكوين مزود API</string>
+    <string name="provider_info_message">يعمل هذا مع نقاط النهاية المتوافقة مع OpenAI بما في ذلك HuggingFace و Google Vertex AI و Anthropic ومزودين متوافقين آخرين.</string>
+    <string name="provider_huggingface_desc">HuggingFace Router مع أكثر من 114 نموذج</string>
+    <string name="provider_google_desc">Google Vertex AI OpenAPI endpoint</string>
+    <string name="feature_image">توليد الصور</string>
+    <string name="feature_themes">سمات متعددة</string>
+    <string name="feature_languages">دعم متعدد اللغات</string>
+    <string name="copyright">© 2025 Chat UI\nجميع الحقوق محفوظة</string>
+    <string name="sign_out">تسجيل الخروج</string>
+    <string name="save_changes">حفظ التغييرات</string>
+
+    <!-- Chat -->
+    <string name="recent_chats">المحادثات الأخيرة</string>
+    <string name="online">متصل</string>
+    <string name="just_now">الآن</string>
+    <string name="delete">حذف</string>
+    <string name="share">مشاركة</string>
+    <string name="send">إرسال</string>
+
+    <!-- Models -->
+    <string name="search_models">البحث عن النماذج...</string>
+    <string name="free">مجاني</string>
+    <string name="fast">سريع</string>
+    <string name="popular">شائع</string>
+    <string name="connection_successful">الاتصال ناجح</string>
+    <string name="connection_failed">فشل الاتصال</string>
+
+    <!-- Gallery -->
+    <string name="image_gallery">معرض الصور</string>
+    <string name="your_ai_images">صورك المولدة بالذكاء الاصطناعي</string>
+    <string name="generate">توليد</string>
+    <string name="generate_image">توليد صورة</string>
+    <string name="image_description">وصف الصورة</string>
+    <string name="select_model">اختر النموذج</string>
+    <string name="generating">جاري التوليد...</string>
+    <string name="no_images_yet">لا توجد صور بعد</string>
+    <string name="click_generate_new">انقر "توليد" لإنشاء أول صورة AI</string>
+    <string name="generate_new_image">توليد صورة جديدة</string>
+    <string name="image_gallery_nav">معرض الصور</string>
+    <string name="filter_by_model">تصفية حسب النموذج</string>
+    <string name="all_models">جميع النماذج</string>
+    <string name="delete_image">حذف الصورة</string>
+    <string name="delete_image_confirm">لا يمكن التراجع عن هذا الإجراء. سيتم حذف الصورة نهائياً.</string>
+    <string name="image_deleted">تم حذف الصورة</string>
+    <string name="failed_to_delete_image">فشل حذف الصورة</string>
+    <string name="timeout_error">انتهت المهلة. قد يكون النموذج مشغولاً—حاول مرة أخرى أو غيّر النموذج.</string>
+    <string name="loading_images">جاري تحميل الصور...</string>
+    <string name="refresh_images">تحديث</string>
+    <string name="share_image">مشاركة الصورة</string>
+    <string name="image_details">تفاصيل الصورة</string>
+    <string name="prompt_label">الوصف:</string>
+    <string name="model_label">النموذج:</string>
+    <string name="size_label">الحجم:</string>
+    <string name="created_label">تاريخ الإنشاء:</string>
+
+    <!-- Profile -->
+    <string name="profile_title">الملف الشخصي</string>
+    <string name="sign_in_title">تسجيل الدخول إلى Chat UI</string>
+    <string name="sign_in_subtitle">سجّل الدخول بحساب Google لمزامنة محادثاتك وإعداداتك عبر الأجهزة.</string>
+    <string name="sign_in_google">تسجيل الدخول بـ Google</string>
+    <string name="sign_in_tap">انقر لتسجيل الدخول بـ Google</string>
+    <string name="account_stats">إحصائيات الحساب</string>
+    <string name="member_since">عضو منذ</string>
+    <string name="last_login">آخر تسجيل دخول</string>
+    <string name="last_seen">آخر ظهور</string>
+    <string name="current_session">الجلسة الحالية</string>
+    <string name="total_time">إجمالي الوقت في التطبيق</string>
+    <string name="account_info">معلومات الحساب</string>
+    <string name="username">اسم المستخدم</string>
+    <string name="google_connected">متصل</string>
+    <string name="signed_out">تم تسجيل الخروج</string>
+    <string name="welcome_user">مرحباً، %s!</string>
+    <string name="sign_in_failed">فشل تسجيل الدخول: %s</string>
+    <string name="sign_in_success">تم تسجيل الدخول بنجاح!</string>
+    <string name="image_generated_success">تم إنشاء الصورة بنجاح!</string>
+    <string name="no_conversation_to_share">لا توجد محادثة للمشاركة</string>
+
+    <!-- MCP Servers -->
+    <string name="mcp_servers">خوادم MCP</string>
+    <string name="mcp_servers_subtitle">إدارة خوادم MCP لتوسيع ChatUI بأدوات خارجية.</string>
+    <string name="mcp_servers_configured">%d خادم مُعَد</string>
+    <string name="mcp_servers_enabled">%d مُفعَّل</string>
+    <string name="mcp_refresh">تحديث</string>
+    <string name="mcp_import_json">استيراد JSON</string>
+    <string name="mcp_add_server">إضافة خادم</string>
+    <string name="mcp_base_servers">الخوادم الأساسية</string>
+    <string name="mcp_custom_servers">الخوادم المخصصة</string>
+    <string name="mcp_no_custom_servers">لا توجد خوادم مخصصة بعد</string>
+    <string name="mcp_add_custom_desc">أضف خوادم MCP الخاصة بك مع أدوات مخصصة</string>
+    <string name="mcp_add_first_server">أضف خادمك الأول</string>
+    <string name="mcp_health_check">فحص الاتصال</string>
+    <string name="mcp_settings">الإعدادات</string>
+    <string name="mcp_tools">أدوات</string>
+    <string name="mcp_tool">أداة</string>
+    <string name="mcp_available_tools">الأدوات المتاحة</string>
+    <string name="mcp_quick_tips">نصائح سريعة</string>
+    <string name="mcp_tip_trust">اتصل فقط بالخوادم التي تثق بها</string>
+    <string name="mcp_tip_enable">فعّل الخوادم لجعل أدواتها متاحة في المحادثة</string>
+    <string name="mcp_tip_health">استخدم زر فحص الاتصال للتحقق من اتصال الخادم</string>
+    <string name="mcp_tip_headers">يمكنك إضافة رؤوس HTTP للمصادقة عند الحاجة</string>
+    <string name="mcp_status_connected">متصل</string>
+    <string name="mcp_status_connecting">جاري الاتصال...</string>
+    <string name="mcp_status_error">خطأ</string>
+    <string name="mcp_status_disconnected">غير متصل</string>
+    <string name="mcp_status_standby">في الانتظار</string>
+    <string name="mcp_no_tools_warning">متصل ولكن لا توجد أدوات متاحة</string>
+    <string name="mcp_import_title">استيراد إعدادات MCP</string>
+    <string name="mcp_import_subtitle">استيراد خوادم MCP المحلية من إعدادات JSON (صيغة Windsurf/VS Code).</string>
+    <string name="mcp_upload_json">رفع ملف JSON</string>
+    <string name="mcp_upload_hint">انقر للرفع أو اسحب وأفلت</string>
+    <string name="mcp_upload_file_hint">mcp_config.json أو ما شابه</string>
+    <string name="mcp_paste_json">لصق إعدادات JSON</string>
+    <string name="mcp_security_notice">تنبيه أمني مهم</string>
+    <string name="mcp_security_warning">سيتم تشغيل الأوامر على خادمك. استورد الإعدادات من مصادر موثوقة فقط. الإعدادات الخبيثة يمكنها تنفيذ أكواد ضارة.</string>
+    <string name="mcp_import_config">استيراد الإعدادات</string>
+    <string name="mcp_add_server_title">إضافة خادم MCP</string>
+    <string name="mcp_add_server_subtitle">أضف خادم MCP مخصص إلى ChatUI.</string>
+    <string name="mcp_server_name">اسم الخادم</string>
+    <string name="mcp_server_url">رابط الخادم</string>
+    <string name="mcp_http_headers">رؤوس HTTP (اختياري)</string>
+    <string name="mcp_no_headers">لا توجد رؤوس مُعَدة</string>
+    <string name="mcp_add_header">إضافة رأس</string>
+    <string name="mcp_header_name">اسم الرأس (مثال: Authorization)</string>
+    <string name="mcp_header_value">القيمة</string>
+    <string name="mcp_server_warning">كن حذراً مع خوادم MCP المخصصة.</string>
+    <string name="mcp_server_warning_desc">تستقبل طلباتك (بما في ذلك سياق المحادثة وأي رؤوس تضيفها) ويمكنها تشغيل أدوات قوية نيابة عنك. أضف فقط الخوادم التي تثق بها.</string>
+    <string name="mcp_export_json">تصدير JSON</string>
+    <string name="mcp_json_copied">تم نسخ JSON</string>
+    <string name="mcp_refreshing">جاري التحديث...</string>
+    <string name="mcp_server_added">تمت إضافة الخادم بنجاح</string>
+    <string name="mcp_server_deleted">تم حذف الخادم</string>
+    <string name="mcp_import_success">تم استيراد %d خادم بنجاح</string>
+    <string name="mcp_import_failed">فشل الاستيراد</string>
+    <string name="mcp_delete_server">حذف الخادم</string>
+    <string name="mcp_delete_confirm">هل أنت متأكد من حذف \"%s\"؟</string>
+
+    <!-- Common -->
+    <string name="ok">موافق</string>
+    <string name="cancel">إلغاء</string>
+    <string name="yes">نعم</string>
+    <string name="no">لا</string>
+    <string name="error">خطأ</string>
+    <string name="loading">جاري التحميل...</string>
+    <string name="retry">إعادة المحاولة</string>
+    <string name="close">إغلاق</string>
+    <string name="download">تحميل</string>
+
+    <!-- Generate Video Screen -->
+    <string name="generate_video_title">توليد فيديو</string>
+    <string name="generate_video_subtitle">إنشاء فيديو بالذكاء الاصطناعي باستخدام Veo</string>
+    <string name="generation_mode">وضع التوليد</string>
+    <string name="text_mode">نص</string>
+    <string name="image_mode">صورة</string>
+    <string name="video_mode">فيديو</string>
+    <string name="select_media">اختر الوسائط</string>
+    <string name="select_image">اختيار صورة</string>
+    <string name="select_video">اختيار فيديو</string>
+    <string name="image_selected">تم اختيار صورة</string>
+    <string name="video_selected">تم اختيار فيديو</string>
+    <string name="media_selected">تم اختيار وسائط</string>
+    <string name="prompt_hint_text">صف الفيديو الذي تريد توليده</string>
+    <string name="prompt_hint_image">صف كيف يجب أن تتحرك الصورة</string>
+    <string name="prompt_hint_video">صف كيف تريد تحويل الفيديو</string>
+    <string name="visibility">الخصوصية</string>
+    <string name="private_firebase">🔒 خاص (Firebase)</string>
+    <string name="public_youtube">🔓 عام (YouTube)</string>
+    <string name="youtube_warning">سيتم رفع هذا الفيديو إلى YouTube وجعله عاماً</string>
+    <string name="duration">المدة</string>
+    <string name="aspect_ratio">نسبة الأبعاد</string>
+    <string name="video_model">نموذج الفيديو</string>
+    <string name="quality">الجودة</string>
+    <string name="advanced_settings">إعدادات متقدمة</string>
+    <string name="frame_rate">معدل الإطارات</string>
+    <string name="cinematic_style">الأسلوب السينمائي</string>
+    <string name="motion_level">مستوى الحركة</string>
+    <string name="lighting_style">أسلوب الإضاءة</string>
+    <string name="estimated_cost">التكلفة المتوقعة: %1$s</string>
+    <string name="estimated_cost_default">التكلفة المتوقعة: متوسطة</string>
+    <string name="ready_to_generate">جاهز للتوليد</string>
+    <string name="starting_generation">بدء توليد الفيديو...</string>
+    <string name="generating_video">جاري توليد الفيديو... %1$d%%</string>
+    <string name="video_generated_success">تم توليد الفيديو بنجاح!</string>
+    <string name="youtube_auth_required">مطلوب توثيق YouTube</string>
+    <string name="generation_error">خطأ: %1$s</string>
+    <string name="clear">مسح</string>
+    <string name="generate_video_button">توليد فيديو</string>
+    <string name="generating_video_button">جاري التوليد...</string>
+    <string name="generate_another">توليد فيديو آخر</string>
+    <string name="authenticate_youtube">توثيق YouTube</string>
+    <string name="try_again">حاول مرة أخرى</string>
+
+    <string name="fps_24">24 إطار/ث</string>
+    <string name="fps_30">30 إطار/ث</string>
+    <string name="fps_60">60 إطار/ث</string>
+
+    <string name="duration_seconds">%1$dث</string>
+    <string name="duration_seconds_default">6ث</string>
+
+    <!-- Video Gallery -->
+    <string name="video_gallery_title">معرض الفيديو</string>
+    <string name="generate_video_nav">توليد فيديو</string>
+    <string name="video_gallery_nav">معرض الفيديو</string>
+    <string name="no_videos_yet">لا توجد فيديوهات بعد</string>
+    <string name="start_creating_videos">ابدأ بصناعة فيديوهات رائعة بالذكاء الاصطناعي</string>
+
+    <string name="share_video_text">شاهد هذا الفيديو المولّد بالذكاء الاصطناعي: %1$s</string>
+    <string name="share_video_subject">فيديو مولّد بالذكاء الاصطناعي</string>
+    <string name="share_video_chooser_title">مشاركة الفيديو</string>
+    <string name="only_public_videos_can_be_shared">يمكن مشاركة الفيديوهات العامة فقط</string>
+
+    <string name="youtube_auth_complete_prompt">يرجى إكمال توثيق YouTube</string>
+    <string name="failed_to_open_authentication">فشل فتح صفحة التوثيق</string>
+
+    <string name="back">رجوع</string>
+    
+    <!-- Error Messages -->
+    <string name="firestore_index_building_error">فهرس Firestore قيد الإنشاء. تم تحميل الفيديوهات بدون ترتيب. يرجى الانتظار أو نشر الفهارس: firebase deploy --only firestore:indexes</string>
+    <string name="firestore_permission_error">تم رفض الصلاحية. يرجى التحقق من قواعد أمان Firestore.</string>
+    <string name="network_error_message">خطأ في الشبكة. يرجى التحقق من الاتصال والمحاولة مرة أخرى.</string>
+    <string name="video_load_error">فشل تحميل الفيديوهات: %1$s</string>
+</resources>

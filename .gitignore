@@ -1,0 +1,47 @@
+# Gradle build files
+/build/
+.gradle/
+build/
+local.properties
+
+# Android Studio generated files
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.DS_Store
+
+# Keystore files (contains sensitive signing information)
+keystore.properties
+*.jks
+*.keystore
+
+# Firebase configuration files (contains sensitive API keys)
+google-services.json
+
+# Local configuration files
+config.properties*
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# APK files
+*.apk
+*.aab
+
+# ProGuard
+/proguard/
+
+# Test reports
+/reports/
+/test-results/

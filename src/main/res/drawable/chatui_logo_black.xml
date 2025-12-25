@@ -1,0 +1,37 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Chat bubble (dark fill) - centered properly -->
+    <path
+        android:pathData="M50,95C25.15,95 5,74.85 5,50C5,25.15 25.15,5 50,5C74.85,5 95,25.15 95,50C95,57.14 93.04,63.82 89.62,69.56C88.86,71.08 88.62,72.82 89.06,74.47L92.33,86.68C92.86,88.71 90.94,90.63 88.91,90.1L76.7,86.83C75.05,86.39 73.31,86.65 71.79,87.41C66.05,90.42 59.37,95 50,95Z"
+        android:fillColor="#FFD700"/>
+
+    <!-- Wink (left eye) -->
+    <path
+        android:pathData="M30.4,32.5 L38.7,35.8 L27.2,39"
+        android:strokeWidth="2.8"
+        android:fillColor="#00000000"
+        android:strokeColor="#0A0B12"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+    <!-- Flat eye (right eye) -->
+    <path
+        android:pathData="M62,36.5 L73.3,36.5"
+        android:strokeWidth="2.8"
+        android:fillColor="#00000000"
+        android:strokeColor="#0A0B12"
+        android:strokeLineCap="round"/>
+
+    <!-- Smile arc (light stroke) -->
+    <path
+        android:pathData="M72,48C72,60.15 62.15,70 50,70C37.85,70 28,60.15 28,48"
+        android:strokeWidth="7"
+        android:fillColor="#00000000"
+        android:strokeColor="#000000"
+        android:strokeLineCap="round"/>
+
+</vector>

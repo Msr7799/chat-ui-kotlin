@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function isOwnerByResource() {
+      return isSignedIn() && resource.data.userId == uid();
+    }
+
+    function isOwnerByRequest() {
+      return isSignedIn() && request.resource.data.userId == uid();
+    }
+
+    // Users
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && uid() == userId;
+    }
+
+    // Conversations
+    match /conversations/{conversationId} {
+      allow read: if isOwnerByResource();
+      allow create: if isOwnerByRequest();
+      allow update, delete: if isOwnerByResource() && isOwnerByRequest();
+    }
+
+    // Assistants
+    match /assistants/{assistantId} {
+      allow read: if isSignedIn();
+      allow create: if isOwnerByRequest();
+      allow update, delete: if isOwnerByResource() && isOwnerByRequest();
+    }
+
+    // Sessions
+    match /sessions/{sessionId} {
+      allow read: if isOwnerByResource();
+      allow create: if isOwnerByRequest();
+      allow update, delete: if isOwnerByResource() && isOwnerByRequest();
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if isOwnerByResource();
+      allow create: if isOwnerByRequest();
+      allow update, delete: if isOwnerByResource() && isOwnerByRequest();
+    }
+
+    // Generated Images
+    match /generatedImages/{imageId} {
+      allow read: if isOwnerByResource();
+      allow create: if isOwnerByRequest();
+      allow update, delete: if isOwnerByResource() && isOwnerByRequest();
+    }
+
+    // Generated Videos
+    match /generated_videos/{videoId} {
+      allow read: if isOwnerByResource();
+      allow create: if isOwnerByRequest();
+      allow update, delete: if isOwnerByResource() && isOwnerByRequest();
+    }
+
+    // Shared conversations: public read only when isPublic flag is true
+    match /sharedConversations/{sharedId} {
+      allow get: if resource.data.isPublic == true || isOwnerByResource();
+      allow list: if isOwnerByResource();
+      allow create: if isOwnerByRequest();
+      allow update, delete: if isOwnerByResource() && isOwnerByRequest();
+    }
+
+    // Config: read-only for authenticated users
+    match /config/{configId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Reports
+    match /reports/{reportId} {
+      allow create: if isOwnerByRequest();
+      allow read: if isOwnerByResource();
+      allow update, delete: if false;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

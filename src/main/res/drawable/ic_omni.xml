@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="17"
+    android:viewportHeight="17">
+    
+    <!-- Omni Icon from chat-ui - Infinity/Router symbol -->
+    <path
+        android:pathData="M5.977,12.181C6.25,12.516 6.574,12.895 6.98,13.274C5.893,13.807 4.441,14.131 2.347,14.131V12.727C4.021,12.727 5.159,12.503 5.977,12.181ZM10.079,6.005C10.348,6.307 10.625,6.569 10.973,6.794C11.591,7.192 12.491,7.498 14.053,7.498V8.902C12.492,8.902 11.591,9.208 10.973,9.606C10.625,9.83 10.348,10.092 10.079,10.394C9.783,10.16 9.523,9.87 9.213,9.488C9.182,9.45 9.15,9.41 9.116,9.368C9.425,9.034 9.78,8.706 10.213,8.427C10.338,8.347 10.469,8.271 10.605,8.2C10.469,8.129 10.338,8.053 10.213,7.972C9.78,7.693 9.425,7.365 9.116,7.031C9.149,6.989 9.182,6.95 9.213,6.912C9.523,6.529 9.782,6.239 10.079,6.005ZM2.347,2.269C4.44,2.269 5.893,2.592 6.98,3.125C6.574,3.504 6.25,3.883 5.977,4.217C5.159,3.896 4.021,3.674 2.347,3.674V2.269Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="10.285"
+                android:startY="8.063"
+                android:endX="-0.715"
+                android:endY="8.063"
+                android:type="linear">
+                <item android:offset="0" android:color="#FFFFFFFF"/>
+                <item android:offset="1" android:color="#00FFFFFF"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+    
+    <path
+        android:pathData="M14.052,3.673C12.051,3.673 10.816,3.989 9.976,4.414C9.144,4.836 8.637,5.395 8.123,6.028C7.622,6.645 7.064,7.407 6.187,7.972C6.062,8.053 5.931,8.129 5.795,8.2C5.931,8.272 6.062,8.347 6.187,8.428C7.064,8.993 7.622,9.755 8.123,10.373C8.637,11.005 9.144,11.564 9.976,11.986C10.816,12.411 12.051,12.727 14.052,12.727V14.131C11.91,14.131 10.439,13.793 9.343,13.238C8.24,12.68 7.581,11.931 7.034,11.257C6.474,10.567 6.072,10.022 5.428,9.606C4.809,9.208 3.909,8.902 2.347,8.902V7.498C3.909,7.498 4.809,7.193 5.428,6.794C6.072,6.379 6.474,5.833 7.034,5.144C7.581,4.469 8.24,3.721 9.343,3.162C10.439,2.607 11.91,2.269 14.052,2.269V3.673Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="1.347"
+                android:startY="8.063"
+                android:endX="14.273"
+                android:endY="8.063"
+                android:type="linear">
+                <item android:offset="0" android:color="#00FFFFFF"/>
+                <item android:offset="1" android:color="#FFFFFFFF"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

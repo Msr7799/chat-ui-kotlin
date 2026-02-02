@@ -8,10 +8,18 @@ A modern, feature-rich Android chat application built with **Jetpack Compose** a
 
 ## 📱 Screenshots
 
-| | | |
-|:---:|:---:|:---:|
-| ![ChatUI-App](./App-pic.png) | ![ChatUI-App](./App-pic2.png) | ![ChatUI-App](./App-pic3.png) |
-| ![ChatUI-App](./App-pic4.png) | ![ChatUI-App](./App-pic5.png) | ![ChatUI-App](./App-pic6.png) |
+<table align="center">
+  <tr>
+    <td align="center"><img src="./App-pic.png" width="250" alt="App Screenshot 1"/></td>
+    <td align="center"><img src="./app-pic2.png" width="250" alt="App Screenshot 2"/></td>
+    <td align="center"><img src="./app-pic3.png" width="250" alt="App Screenshot 3"/></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="./App-pic4.png" width="250" alt="App Screenshot 4"/></td>
+    <td align="center"><img src="./App-pic5.png" width="250" alt="App Screenshot 5"/></td>
+    <td align="center"><img src="./app-pic6.png" width="250" alt="App Screenshot 6"/></td>
+  </tr>
+</table>
 
 ## ✨ Features
 
@@ -137,7 +145,7 @@ git clone <repository-url>
 cd chatui
 ```
 
-2. **Configure API Keys**
+1. **Configure API Keys**
 
 Edit `app/src/main/assets/config.properties`:
 
@@ -161,7 +169,7 @@ LLM_ROUTER_ARCH_MODEL=router/omni
 LLM_ROUTER_FALLBACK_MODEL=Qwen/Qwen3-235B-A22B-Instruct-2507
 ```
 
-3. **Build and Run**
+1. **Build and Run**
 
 ```bash
 ./gradlew assembleDebug

@@ -1,47 +1,21 @@
-# Gradle build files
-/build/
-.gradle/
-build/
-local.properties
-
-# Android Studio generated files
-.idea/
 *.iml
-*.ipr
-*.iws
-out/
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
 .DS_Store
-
-# Keystore files (contains sensitive signing information)
+/build
+/captures
+.externalNativeBuild
+.cxx
 keystore.properties
-*.jks
-*.keystore
-
-# Firebase configuration files (contains sensitive API keys)
-google-services.json
-
-# Local configuration files
-config.properties*
-
-# Log files
-*.log
-
-# Temporary files
-*.tmp
-*.temp
-
-# OS generated files
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# APK files
-*.apk
-*.aab
-
-# ProGuard
-/proguard/
-
-# Test reports
-/reports/
-/test-results/
+local.properties
+client_secret_31197033030-hlho29vafgrek7sauoda44kvo1me77tl.apps.googleusercontent.com.json
+config.properties
+# Sensitive Docs
+Docs/chat-ui-e1c11-10ea2d87bddf.json
+Docs/models_list_google.txt

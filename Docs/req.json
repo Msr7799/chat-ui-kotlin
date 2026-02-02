@@ -1,0 +1,20 @@
+{
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "Solve this complex logic puzzle: If all bloops are bleeps and all bleeps are blips, are all bloops definitely blips? Explain step by step."
+        }
+      ]
+    }
+  ],
+  "generationConfig": {
+    "temperature": 0.7,
+    "maxOutputTokens": 2048,
+    "thinking_config": {
+      "include_thoughts": true,
+      "thinking_level": "MEDIUM"
+    }
+  }
+}

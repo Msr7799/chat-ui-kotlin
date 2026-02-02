@@ -4,6 +4,13 @@
   <img src="./ChatUI-App.png" width="full" alt="HuggingChat Logo"/>
 </p>
 
+<p align="center">
+    <img src="https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin" />
+    <img src="https://img.shields.io/badge/Jetpack%20Compose-4285F4?style=for-the-badge&logo=android&logoColor=white" alt="Jetpack Compose" />
+    <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase" />
+    <img src="https://img.shields.io/badge/HuggingFace-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black" alt="HuggingFace" />
+</p>
+
 A modern, feature-rich Android chat application built with **Jetpack Compose** and **Kotlin**, inspired by HuggingFace's [chat-ui](https://github.com/huggingface/chat-ui) web application. This app provides a native Android experience for interacting with various AI language models through the HuggingFace Router API. with Kotlin, Jetpack Compose, and modern Android architecture.
 
 ## 📱 Screenshots

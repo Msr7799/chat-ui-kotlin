@@ -28,17 +28,19 @@ object MCPManager {
     
     // Default built-in servers (same as Chat UI JavaScript)
     // All servers are disabled by default - user must enable them
-    private val defaultServers = listOf(
-
-        MCPServerConfig(
-            id = "exa-web-search",
-            name = "Web Search (Exa)",
-            url = "https://mcp.exa.ai/mcp",
-            type = MCPTransportType.SSE,
-            enabled = false,
-            headers = emptyMap()
+    private fun buildDefaultServers(): List<MCPServerConfig> {
+        val tavilyUrl = ConfigManager.getResolvedTavilyMcpUrl()
+        return listOf(
+            MCPServerConfig(
+                id = "exa-web-search",
+                name = "Web Search (Tavily)",
+                url = tavilyUrl.ifBlank { "https://mcp.tavily.com/mcp/" },
+                type = MCPTransportType.SSE,
+                enabled = false,
+                headers = emptyMap()
+            )
         )
-    )
+    }
     
     // Active MCP clients - thread-safe ConcurrentHashMap
     private val clients = ConcurrentHashMap<String, MCPClient>()
@@ -132,6 +134,7 @@ object MCPManager {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val serversJson = prefs.getString(SERVERS_KEY, null)
             val initialized = prefs.getBoolean(DEFAULT_SERVERS_INITIALIZED, false)
+            val defaultServers = buildDefaultServers()
             
             // Load servers but force all to disabled on app start (user must enable manually)
             val loadedServers = if (serversJson != null) {
@@ -145,7 +148,7 @@ object MCPManager {
                 val existingIds = loadedServers.map { it.id }
                 val newDefaults = defaultServers.filter { it.id !in existingIds }
                 
-                _servers.value = loadedServers + newDefaults
+                _servers.value = mergeDefaultDefinitions(loadedServers + newDefaults, defaultServers)
                 
                 // Mark as initialized and save
                 prefs.edit()
@@ -158,7 +161,7 @@ object MCPManager {
                 // Ensure default servers always exist (can't be deleted)
                 val existingIds = loadedServers.map { it.id }
                 val missingDefaults = defaultServers.filter { it.id !in existingIds }
-                _servers.value = loadedServers + missingDefaults
+                _servers.value = mergeDefaultDefinitions(loadedServers + missingDefaults, defaultServers)
                 
                 if (missingDefaults.isNotEmpty()) {
                     prefs.edit().putString(SERVERS_KEY, json.encodeToString(_servers.value)).apply()
@@ -168,7 +171,21 @@ object MCPManager {
             Log.i(TAG, "Loaded ${_servers.value.size} MCP servers")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load servers: ${e.message}", e)
-            _servers.value = defaultServers
+            _servers.value = buildDefaultServers()
+        }
+    }
+
+    private fun mergeDefaultDefinitions(
+        currentServers: List<MCPServerConfig>,
+        defaultServers: List<MCPServerConfig>
+    ): List<MCPServerConfig> {
+        val defaultsById = defaultServers.associateBy { it.id }
+        return currentServers.map { server ->
+            val replacement = defaultsById[server.id] ?: return@map server
+            replacement.copy(
+                enabled = server.enabled,
+                headers = if (server.headers.isNotEmpty()) server.headers else replacement.headers
+            )
         }
     }
 
@@ -229,7 +246,7 @@ object MCPManager {
      * Check if a server is a default (built-in) server
      */
     fun isDefaultServer(serverId: String): Boolean {
-        return defaultServers.any { it.id == serverId }
+        return buildDefaultServers().any { it.id == serverId }
     }
     
     /**
@@ -239,11 +256,15 @@ object MCPManager {
         getScope().launch {
             _servers.value.forEach { disconnectFromServer(it.id) }
         }
-        _servers.value = defaultServers.toList()
+        _servers.value = buildDefaultServers()
         _tools.value = emptyList()
         _serverStatuses.value = emptyMap()
         saveServers(context)
         Log.i(TAG, "Reset to default servers")
+    }
+
+    fun getServerName(serverId: String): String {
+        return _servers.value.find { it.id == serverId }?.name ?: serverId
     }
 
     /**

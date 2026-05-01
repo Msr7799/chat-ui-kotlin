@@ -3,13 +3,15 @@ package com.example.chat_ui.data.cloud
 import android.content.Context
 import android.net.Uri
 import android.util.Log
-import com.cloudinary.android.MediaManager
-import com.cloudinary.android.callback.ErrorInfo
-import com.cloudinary.android.callback.UploadCallback
 import com.example.chat_ui.config.ConfigManager
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.suspendCancellableCoroutine
+import com.example.chat_ui.utils.FirebaseAuthHelper
+import java.io.OutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 /** Result of a Cloudinary upload */
 data class CloudinaryUploadResult(
@@ -30,22 +32,9 @@ object CloudinaryManager {
     fun init(context: Context) {
         if (isInitialized) return
 
-        try {
-            val config =
-                    mapOf(
-                            "cloud_name" to
-                                    ConfigManager.get(ConfigManager.Keys.CLOUDINARY_CLOUD_NAME),
-                            "api_key" to ConfigManager.get(ConfigManager.Keys.CLOUDINARY_API_KEY),
-                            "api_secret" to
-                                    ConfigManager.get(ConfigManager.Keys.CLOUDINARY_API_SECRET)
-                    )
-
-            MediaManager.init(context, config)
-            isInitialized = true
-            Log.i(TAG, "Cloudinary initialized successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize Cloudinary: ${e.message}", e)
-        }
+        context.applicationContext.hashCode()
+        isInitialized = true
+        Log.i(TAG, "Cloudinary uploads are routed through backend")
     }
 
     /**
@@ -56,11 +45,11 @@ object CloudinaryManager {
      * @param tags Optional tags for the image
      */
     suspend fun uploadImage(
-            @Suppress("UNUSED_PARAMETER") context: Context,
+            context: Context,
             imageUri: Uri,
             folder: String? = null,
             tags: List<String>? = null
-    ): CloudinaryUploadResult = suspendCancellableCoroutine { continuation ->
+    ): CloudinaryUploadResult = withContext(Dispatchers.IO) {
         val uploadFolder =
                 folder
                         ?: ConfigManager.get(
@@ -68,83 +57,13 @@ object CloudinaryManager {
                                 "chat-ui/kotlin"
                         )
 
-        val requestId =
-                MediaManager.get()
-                        .upload(imageUri)
-                        .option("folder", uploadFolder)
-                        .apply { tags?.let { option("tags", it.joinToString(",")) } }
-                        .callback(
-                                object : UploadCallback {
-                                    override fun onStart(requestId: String) {
-                                        Log.d(TAG, "Upload started: $requestId")
-                                    }
-
-                                    override fun onProgress(
-                                            requestId: String,
-                                            bytes: Long,
-                                            totalBytes: Long
-                                    ) {
-                                        val progress =
-                                                if (totalBytes > 0) {
-                                                    ((bytes * 100) / totalBytes).toInt()
-                                                } else {
-                                                    0
-                                                }
-                                        Log.d(
-                                                TAG,
-                                                "Upload progress: $progress% (bytes=$bytes total=$totalBytes)"
-                                        )
-                                    }
-
-                                    override fun onSuccess(
-                                            requestId: String,
-                                            resultData: Map<*, *>
-                                    ) {
-                                        Log.i(TAG, "Upload success: $resultData")
-
-                                        val result =
-                                                CloudinaryUploadResult(
-                                                        url = resultData["secure_url"] as? String
-                                                                        ?: "",
-                                                        publicId =
-                                                                resultData["public_id"] as? String
-                                                                        ?: "",
-                                                        width =
-                                                                (resultData["width"] as? Number)
-                                                                        ?.toInt()
-                                                                        ?: 0,
-                                                        height =
-                                                                (resultData["height"] as? Number)
-                                                                        ?.toInt()
-                                                                        ?: 0,
-                                                        format = resultData["format"] as? String
-                                                                        ?: "",
-                                                        bytes =
-                                                                (resultData["bytes"] as? Number)
-                                                                        ?.toLong()
-                                                                        ?: 0
-                                                )
-
-                                        continuation.resume(result)
-                                    }
-
-                                    override fun onError(requestId: String, error: ErrorInfo) {
-                                        Log.e(TAG, "Upload error: ${error.description}")
-                                        continuation.resumeWithException(
-                                                Exception(
-                                                        "Cloudinary upload failed: ${error.description}"
-                                                )
-                                        )
-                                    }
-
-                                    override fun onReschedule(requestId: String, error: ErrorInfo) {
-                                        Log.w(TAG, "Upload rescheduled: ${error.description}")
-                                    }
-                                }
-                        )
-                        .dispatch()
-
-        continuation.invokeOnCancellation { MediaManager.get().cancelRequest(requestId) }
+        uploadViaBackend(
+                context = context,
+                uri = imageUri,
+                resourceType = "image",
+                folder = uploadFolder,
+                tags = tags?.joinToString(",")
+        )
     }
 
     /**
@@ -156,96 +75,24 @@ object CloudinaryManager {
      * backend.
      */
     suspend fun uploadVideo(
-            @Suppress("UNUSED_PARAMETER") context: Context,
+            context: Context,
             videoUri: Uri,
             folder: String? = null,
             tags: List<String>? = null
-    ): CloudinaryUploadResult = suspendCancellableCoroutine { continuation ->
+    ): CloudinaryUploadResult = withContext(Dispatchers.IO) {
         val uploadFolder =
                 folder
                         ?: ConfigManager.get(
                                 ConfigManager.Keys.CLOUDINARY_UPLOAD_FOLDER,
                                 "chat-ui/kotlin/videos"
                         )
-
-        val request =
-                MediaManager.get()
-                        .upload(videoUri)
-                        .option("resource_type", "video")
-                        .option("folder", uploadFolder)
-
-        if (!tags.isNullOrEmpty()) {
-            request.option("tags", tags.joinToString(","))
-        }
-
-        request.callback(
-                        object : UploadCallback {
-                            override fun onStart(requestId: String) {
-                                Log.d(TAG, "Cloudinary video upload started: $requestId")
-                            }
-
-                            override fun onProgress(
-                                    requestId: String,
-                                    bytes: Long,
-                                    totalBytes: Long
-                            ) {
-                                // Optional: implement progress reporting
-                            }
-
-                            override fun onSuccess(requestId: String, resultData: Map<*, *>) {
-                                try {
-                                    val publicId = resultData["public_id"] as? String ?: ""
-                                    val secureUrl = resultData["secure_url"] as? String ?: ""
-                                    if (secureUrl.isBlank()) {
-                                        continuation.resumeWithException(
-                                                Exception(
-                                                        "Cloudinary video upload succeeded but secure_url is empty"
-                                                )
-                                        )
-                                        return
-                                    }
-                                    continuation.resume(
-                                            CloudinaryUploadResult(
-                                                    url = secureUrl,
-                                                    publicId = publicId,
-                                                    width =
-                                                            (resultData["width"] as? Number)
-                                                                    ?.toInt()
-                                                                    ?: 0,
-                                                    height =
-                                                            (resultData["height"] as? Number)
-                                                                    ?.toInt()
-                                                                    ?: 0,
-                                                    format = resultData["format"] as? String ?: "",
-                                                    bytes =
-                                                            (resultData["bytes"] as? Number)
-                                                                    ?.toLong()
-                                                                    ?: 0
-                                            )
-                                    )
-                                } catch (e: Exception) {
-                                    continuation.resumeWithException(e)
-                                }
-                            }
-
-                            override fun onError(requestId: String, error: ErrorInfo) {
-                                continuation.resumeWithException(
-                                        Exception(
-                                                "Cloudinary video upload failed: ${error.description}"
-                                        )
-                                )
-                            }
-
-                            override fun onReschedule(requestId: String, error: ErrorInfo) {
-                                continuation.resumeWithException(
-                                        Exception(
-                                                "Cloudinary video upload rescheduled: ${error.description}"
-                                        )
-                                )
-                            }
-                        }
+        uploadViaBackend(
+                context = context,
+                uri = videoUri,
+                resourceType = "video",
+                folder = uploadFolder,
+                tags = tags?.joinToString(",")
                 )
-                .dispatch()
     }
 
     /** Upload image from byte array */
@@ -298,5 +145,82 @@ object CloudinaryManager {
                 } else ""
 
         return "https://res.cloudinary.com/$cloudName/image/upload/$transformStr$publicId"
+    }
+
+    private suspend fun uploadViaBackend(
+            context: Context,
+            uri: Uri,
+            resourceType: String,
+            folder: String,
+            tags: String? = null
+    ): CloudinaryUploadResult = withContext(Dispatchers.IO) {
+        val token = FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+                ?: throw IllegalStateException("Please sign in before uploading files")
+
+        val backendBaseUrl = ConfigManager.getBaseUrlForProvider(com.example.chat_ui.data.ApiProvider.HUGGINGFACE).trimEnd('/')
+        val boundary = "----ChatUI${UUID.randomUUID()}"
+        val connection = (URL("$backendBaseUrl/cloudinary/upload").openConnection() as HttpURLConnection)
+
+        connection.apply {
+            requestMethod = "POST"
+            doOutput = true
+            connectTimeout = 30_000
+            readTimeout = 120_000
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        }
+
+        val fileName = resolveFileName(uri, resourceType)
+        connection.outputStream.use { out ->
+            writeFormField(out, boundary, "resource_type", resourceType)
+            writeFormField(out, boundary, "folder", folder)
+            if (!tags.isNullOrBlank()) {
+                writeFormField(out, boundary, "tags", tags)
+            }
+            writeFileField(out, boundary, "file", fileName, context.contentResolver.getType(uri) ?: "application/octet-stream")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                input.copyTo(out)
+            } ?: throw IllegalArgumentException("Unable to read URI: $uri")
+            out.write("\r\n--$boundary--\r\n".toByteArray())
+            out.flush()
+        }
+
+        val code = connection.responseCode
+        val response = (if (code in 200..299) connection.inputStream else connection.errorStream)
+                ?.bufferedReader()
+                ?.readText()
+                .orEmpty()
+
+        if (code !in 200..299) {
+            throw RuntimeException("Backend Cloudinary upload failed: HTTP $code")
+        }
+
+        val json = JSONObject(response)
+        CloudinaryUploadResult(
+                url = json.optString("secure_url"),
+                publicId = json.optString("public_id"),
+                width = json.optInt("width", 0),
+                height = json.optInt("height", 0),
+                format = json.optString("format"),
+                bytes = json.optLong("bytes", 0)
+        )
+    }
+
+    private fun resolveFileName(uri: Uri, resourceType: String): String {
+        val last = uri.lastPathSegment?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
+        return last ?: "upload-${System.currentTimeMillis()}.$resourceType"
+    }
+
+    private fun writeFormField(out: OutputStream, boundary: String, name: String, value: String) {
+        out.write("--$boundary\r\n".toByteArray())
+        out.write("Content-Disposition: form-data; name=\"$name\"\r\n\r\n".toByteArray())
+        out.write(value.toByteArray(Charsets.UTF_8))
+        out.write("\r\n".toByteArray())
+    }
+
+    private fun writeFileField(out: OutputStream, boundary: String, name: String, filename: String, contentType: String) {
+        out.write("--$boundary\r\n".toByteArray())
+        out.write("Content-Disposition: form-data; name=\"$name\"; filename=\"$filename\"\r\n".toByteArray())
+        out.write("Content-Type: $contentType\r\n\r\n".toByteArray())
     }
 }

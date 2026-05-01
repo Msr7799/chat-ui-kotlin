@@ -12,7 +12,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.chat_ui.api.LlmRouter
 import com.example.chat_ui.config.ConfigManager
-import com.example.chat_ui.data.cloud.CloudinaryManager
 import com.example.chat_ui.data.firebase.FirebaseManager
 import com.example.chat_ui.mcp.MCPManager
 import com.example.chat_ui.ui.splash.SplashScreen
@@ -38,9 +37,6 @@ class MainActivity : ComponentActivity() {
         // Initialize Firebase (Firestore + Realtime Database + Storage + Auth)
         FirebaseManager.init(applicationContext)
 
-        // Initialize Cloudinary
-        CloudinaryManager.init(applicationContext)
-
         // Load LLM Router routes
         LlmRouter.loadRoutes(applicationContext)
         
@@ -65,19 +61,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Cleanup MCP connections
-        MCPManager.disconnectAll()
+        // Fully clean up MCP resources only when the activity is actually destroyed.
+        MCPManager.cleanup()
         // Firebase handles cleanup automatically
-    }
-    
-    override fun onStop() {
-        super.onStop()
-        // Disconnect MCP when app goes to background
-        MCPManager.disconnectAll()
-    }
-    
-    override fun onRestart() {
-        super.onRestart()
-        // Don't auto-reconnect - user must manually enable servers
     }
 }

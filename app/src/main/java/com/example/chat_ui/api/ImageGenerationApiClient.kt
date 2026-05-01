@@ -7,6 +7,7 @@ import android.util.Log
 import com.example.chat_ui.config.ConfigManager
 import com.example.chat_ui.data.ApiProvider
 import com.example.chat_ui.data.cloud.CloudinaryManager
+import com.example.chat_ui.data.firebase.FirebaseDatabaseManager
 import com.example.chat_ui.data.firebase.FirestoreManager
 import com.example.chat_ui.data.models.GeneratedImage
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +66,7 @@ class ImageGenerationApiClient {
         val width: Int? = null,
         val height: Int? = null,
         val cloudinaryUrl: String? = null,
+        val cloudinaryPublicId: String? = null,
         val firestoreId: String? = null
     )
     
@@ -115,6 +117,15 @@ class ImageGenerationApiClient {
             )
             
             FirestoreManager.saveGeneratedImage(generatedImage)
+            FirebaseDatabaseManager.saveGeneratedImage(
+                imageId = imageId,
+                prompt = prompt.trim(),
+                imageUrl = cloudinaryResult.url,
+                model = modelId,
+                cloudinaryPublicId = cloudinaryResult.publicId,
+                width = options.outWidth,
+                height = options.outHeight
+            )
             
             // Cleanup
             tempFile.delete()
@@ -143,32 +154,12 @@ class ImageGenerationApiClient {
                 numberOfImages = numberOfImages
             )
             
-            val result = generateImage(modelId, request)
-            
-            // Save to Cloudinary and Firestore if requested
-            if (saveToGallery && result is ImageGenResult.Success) {
-                val savedImages = result.images.map { img ->
-                    val saveResult = saveImageToCloudinaryAndFirestore(
-                        context = context,
-                        base64Data = img.base64Data,
-                        prompt = prompt,
-                        modelId = modelId
-                    )
-                    
-                    if (saveResult.isSuccess) {
-                        val generatedImg = saveResult.getOrNull()
-                        img.copy(
-                            cloudinaryUrl = generatedImg?.cloudinaryUrl,
-                            firestoreId = generatedImg?.id
-                        )
-                    } else {
-                        img
-                    }
-                }
-                ImageGenResult.Success(savedImages)
-            } else {
-                result
-            }
+            generateImage(
+                model = modelId,
+                request = request,
+                context = context,
+                saveToGallery = saveToGallery
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error in generateImage wrapper", e)
             ImageGenResult.Error(e.message ?: "Unknown error")
@@ -180,14 +171,45 @@ class ImageGenerationApiClient {
      */
     suspend fun generateImage(
         model: String,
-        request: ImageGenerationRequest
+        request: ImageGenerationRequest,
+        context: Context? = null,
+        saveToGallery: Boolean = false
     ): ImageGenResult = withContext(Dispatchers.IO) {
         try {
             val providerConfig = ConfigManager.getProviderConfig()
             
-            when (providerConfig.provider) {
+            val rawResult = when (providerConfig.provider) {
                 ApiProvider.GOOGLE_AI_STUDIO -> generateWithGoogleAIStudio(model, request)
                 ApiProvider.HUGGINGFACE -> generateWithHuggingFace(model, request)
+            }
+
+            if (!saveToGallery || context == null || rawResult !is ImageGenResult.Success) {
+                rawResult
+            } else {
+                val savedImages = rawResult.images.map { img ->
+                    val saveResult = saveImageToCloudinaryAndFirestore(
+                        context = context,
+                        base64Data = img.base64Data,
+                        prompt = request.prompt,
+                        modelId = model
+                    )
+
+                    if (saveResult.isSuccess) {
+                        val generatedImg = saveResult.getOrNull()
+                        img.copy(
+                            base64Data = "",
+                            cloudinaryUrl = generatedImg?.cloudinaryUrl,
+                            cloudinaryPublicId = generatedImg?.cloudinaryPublicId,
+                            firestoreId = generatedImg?.id,
+                            width = img.width ?: generatedImg?.width,
+                            height = img.height ?: generatedImg?.height
+                        )
+                    } else {
+                        Log.w(TAG, "Failed to persist generated image: ${saveResult.exceptionOrNull()?.message}")
+                        img
+                    }
+                }
+                ImageGenResult.Success(savedImages)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error generating image", e)
@@ -361,7 +383,11 @@ class ImageGenerationApiClient {
         }
         
         val cleanModel = model.removePrefix("hf/")
-        val url = "$baseUrl/$cleanModel"
+        val url = when {
+            baseUrl.endsWith("/v1") -> "https://router.huggingface.co/hf-inference/models/$cleanModel"
+            baseUrl.contains("/hf-inference/") -> "${baseUrl.trimEnd('/')}/$cleanModel"
+            else -> "${baseUrl.trimEnd('/')}/models/$cleanModel"
+        }
         
         // HuggingFace text-to-image format
         val requestBody = buildString {
@@ -424,10 +450,14 @@ class ImageGenerationApiClient {
     private fun parseErrorMessage(responseBody: String): String {
         return try {
             val jsonError = json.parseToJsonElement(responseBody).jsonObject
-            jsonError["error"]?.jsonObject?.get("message")?.jsonPrimitive?.content
-                ?: "Unknown error"
+            val errorNode = jsonError["error"]
+            when {
+                errorNode == null -> "Unknown error"
+                errorNode is kotlinx.serialization.json.JsonPrimitive -> errorNode.content
+                else -> errorNode.jsonObject["message"]?.jsonPrimitive?.content ?: "Unknown error"
+            }
         } catch (e: Exception) {
-            "API error"
+            responseBody.take(220).ifBlank { "API error" }
         }
     }
     

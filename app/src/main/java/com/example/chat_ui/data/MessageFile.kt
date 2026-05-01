@@ -2,14 +2,13 @@ package com.example.chat_ui.data
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
-import java.util.UUID
 
 /**
  * MessageFile - Matches chat-ui's MessageFile type
@@ -21,7 +20,10 @@ data class MessageFile(
     val type: FileDataType,
     val name: String,
     val value: String, // base64 data or hash
-    val mime: String
+    val mime: String,
+    val extractedText: String? = null,
+    val sourceUri: String? = null,
+    val sizeBytes: Long? = null
 ) {
     enum class FileDataType {
         HASH,   // File stored on server, value is hash
@@ -64,6 +66,10 @@ data class MessageFile(
      * Get text content (for text files)
      */
     fun getTextContent(): String? {
+        if (isPdf()) {
+            return extractedText?.takeIf { it.isNotBlank() }
+        }
+
         return if (type == FileDataType.BASE64 && isTextFile()) {
             try {
                 String(Base64.decode(value, Base64.DEFAULT), Charsets.UTF_8)
@@ -132,6 +138,28 @@ data class MessageFile(
             mimeType: String
         ): MessageFile? = withContext(Dispatchers.IO) {
             try {
+                if (mimeType.lowercase() == "application/pdf") {
+                    val sizeBytes = getUriSize(context, uri)
+                    if (sizeBytes > MAX_PDF_STREAM_SIZE_BYTES) {
+                        Log.e(TAG, "PDF too large for backend stream: $sizeBytes bytes")
+                        return@withContext null
+                    }
+
+                    // الأمان: PDF لا يتحول Base64 في Android. نحتفظ بالـ URI فقط ليُرسل كـ multipart stream للباك إند.
+                    Log.i(
+                        TAG,
+                        "Prepared PDF for backend stream: name=$fileName, mime=$mimeType, bytes=$sizeBytes"
+                    )
+                    return@withContext MessageFile(
+                        type = FileDataType.HASH,
+                        name = fileName,
+                        value = "",
+                        mime = mimeType,
+                        sourceUri = uri.toString(),
+                        sizeBytes = sizeBytes
+                    )
+                }
+
                 val inputStream = context.contentResolver.openInputStream(uri)
                     ?: return@withContext null
                 
@@ -158,12 +186,17 @@ data class MessageFile(
                 }
                 
                 val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                Log.i(
+                    TAG,
+                    "Prepared file for chat: name=$fileName, mime=$mimeType, bytes=${bytes.size}"
+                )
                 
                 MessageFile(
                     type = FileDataType.BASE64,
                     name = fileName,
                     value = base64,
-                    mime = mimeType
+                    mime = mimeType,
+                    sizeBytes = bytes.size.toLong()
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to create MessageFile from Uri: ${e.message}", e)
@@ -206,5 +239,44 @@ data class MessageFile(
                 mime = "application/vnd.chatui.clipboard"
             )
         }
+
+        private fun getUriSize(context: Context, uri: Uri): Long {
+            return try {
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                    if (cursor.moveToFirst() && sizeIndex >= 0) {
+                        cursor.getLong(sizeIndex)
+                    } else {
+                        0L
+                    }
+                } ?: 0L
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not read URI size: ${e.message}")
+                0L
+            }
+        }
+
+        fun fromStreamingPdfUri(
+            context: Context,
+            uri: Uri,
+            fileName: String,
+            mimeType: String
+        ): MessageFile? {
+            val sizeBytes = getUriSize(context, uri)
+            if (sizeBytes > MAX_PDF_STREAM_SIZE_BYTES) {
+                Log.e(TAG, "PDF too large for backend stream: $sizeBytes bytes")
+                return null
+            }
+            return MessageFile(
+                type = FileDataType.HASH,
+                name = fileName,
+                value = "",
+                mime = mimeType,
+                sourceUri = uri.toString(),
+                sizeBytes = sizeBytes
+            )
+        }
+
+        private const val MAX_PDF_STREAM_SIZE_BYTES = 20 * 1024 * 1024
     }
 }

@@ -2,6 +2,7 @@ package com.example.chat_ui.mcp
 
 import android.util.Log
 import com.example.chat_ui.config.ConfigManager
+import com.example.chat_ui.utils.FirebaseAuthHelper
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
@@ -33,8 +34,20 @@ class MCPClient(
      * Get authorization headers for MCP requests
      * Adds default token if no Authorization header is present
      */
-    private fun getAuthHeaders(): Map<String, String> {
+    private suspend fun getAuthHeaders(): Map<String, String> {
         val headers = serverConfig.headers.toMutableMap()
+
+        if (serverConfig.url.contains("tavilyapikey=", ignoreCase = true)) {
+            return headers
+        }
+
+        if (serverConfig.url.contains("/v1/mcp/tavily", ignoreCase = true)) {
+            val token = FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+            if (token != null) {
+                headers["Authorization"] = "Bearer $token"
+            }
+            return headers
+        }
         
         // Add default token if no Authorization header present
         if (!MCPUtils.hasAuthHeader(headers)) {

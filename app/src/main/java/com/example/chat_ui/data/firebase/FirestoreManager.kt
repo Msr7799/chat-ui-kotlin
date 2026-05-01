@@ -248,7 +248,13 @@ object FirestoreManager {
 
     suspend fun saveGeneratedImage(image: GeneratedImage): Boolean {
         return try {
-            val userId = FirebaseManager.getCurrentUserId() ?: return false
+            var userId = FirebaseManager.getCurrentUserId()
+            if (userId == null) {
+                val result = FirebaseManager.auth.signInAnonymously().await()
+                userId = result.user?.uid
+            }
+            if (userId == null) return false
+
             val data =
                     mapOf(
                             "id" to image.id,

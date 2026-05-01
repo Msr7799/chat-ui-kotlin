@@ -27,12 +27,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.chat_ui.data.ApiProvider
 import com.example.chat_ui.config.ConfigManager
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
-
-private const val BACKEND_URL = "https://veo-backend-347302193342.us-central1.run.app"
 
 // Persistence
 private const val DEBUG_PREFS = "debug_console_prefs"
@@ -165,9 +164,13 @@ fun DebugScreen(
         ConfigManager.getProviderConfig().apiKey
     }
 
-    val backendTester = remember {
+    val backendBaseUrl = remember {
+        ConfigManager.getBaseUrlForProvider(ApiProvider.HUGGINGFACE)
+    }
+
+    val backendTester = remember(backendBaseUrl) {
         BackendChatMultiModelTester(
-            baseUrl = BACKEND_URL,
+            baseUrl = backendBaseUrl,
             tokenProvider = { FirebaseIdTokenProvider.getIdToken(forceRefresh = true) }
         )
     }
@@ -285,7 +288,7 @@ fun DebugScreen(
                         text = if (testMode == TestMode.DIRECT_API)
                             "generativelanguage.googleapis.com"
                         else
-                            BACKEND_URL,
+                            backendBaseUrl,
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
                         color = MaterialTheme.colorScheme.primary

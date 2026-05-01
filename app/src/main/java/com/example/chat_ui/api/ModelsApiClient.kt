@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.chat_ui.config.ConfigManager
 import com.example.chat_ui.data.ApiProvider
 import com.example.chat_ui.data.GoogleModels
+import com.example.chat_ui.utils.FirebaseAuthHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -110,10 +111,14 @@ object ModelsApiClient {
 
             // HuggingFace
             val baseUrl = providerConfig.baseUrl.trimEnd('/')
-            val apiKey = providerConfig.apiKey
             val isHfRouter = baseUrl == "https://router.huggingface.co/v1"
+            val firebaseToken = FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
 
             Log.i(TAG, "Fetching models from: $baseUrl/models")
+
+            if (firebaseToken == null) {
+                return@withContext Result.failure(Exception("Please sign in before fetching models"))
+            }
 
             val url = URL("$baseUrl/models")
             val connection = url.openConnection() as HttpURLConnection
@@ -121,9 +126,7 @@ object ModelsApiClient {
             connection.apply {
                 requestMethod = "GET"
                 setRequestProperty("Content-Type", "application/json")
-                if (apiKey.isNotBlank()) {
-                    setRequestProperty("Authorization", "Bearer $apiKey")
-                }
+                setRequestProperty("Authorization", "Bearer $firebaseToken")
                 connectTimeout = 30000
                 readTimeout = 30000
             }
@@ -308,10 +311,17 @@ object ModelsApiClient {
             val providerConfig = ConfigManager.getProviderConfig()
             val baseUrl = providerConfig.baseUrl.trimEnd('/')
             val apiKey = providerConfig.apiKey
+            val usesBackendGoogle = baseUrl.contains("/v1/google")
+            val firebaseToken = if (usesBackendGoogle) {
+                FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+            } else null
 
-            if (apiKey.isBlank()) {
+            if (!usesBackendGoogle && apiKey.isBlank()) {
                 Log.e(TAG, "Google AI Studio API Key is empty")
                 return@withContext Result.failure(Exception("Google AI Studio API Key is empty"))
+            }
+            if (usesBackendGoogle && firebaseToken == null) {
+                return@withContext Result.failure(Exception("Please sign in before fetching Google models"))
             }
 
             val allModels = mutableListOf<FetchedModel>()
@@ -319,59 +329,63 @@ object ModelsApiClient {
 
             do {
                 val urlStrNoKey = buildString {
-    append("$baseUrl/models")
-    append("?pageSize=200")
-    if (!pageToken.isNullOrBlank()) {
-        append("&pageToken=")
-        append(java.net.URLEncoder.encode(pageToken!!, "UTF-8"))
-    }
-}
+                    append("$baseUrl/models")
+                    append("?pageSize=200")
+                    if (!pageToken.isNullOrBlank()) {
+                        append("&pageToken=")
+                        append(java.net.URLEncoder.encode(pageToken!!, "UTF-8"))
+                    }
+                }
 
-val urlStrWithKey = buildString {
-    append("$baseUrl/models?key=")
-    append(java.net.URLEncoder.encode(apiKey, "UTF-8"))
-    append("&pageSize=200")
-    if (!pageToken.isNullOrBlank()) {
-        append("&pageToken=")
-        append(java.net.URLEncoder.encode(pageToken!!, "UTF-8"))
-    }
-}
+                val urlStrWithKey = buildString {
+                    append("$baseUrl/models?key=")
+                    append(java.net.URLEncoder.encode(apiKey, "UTF-8"))
+                    append("&pageSize=200")
+                    if (!pageToken.isNullOrBlank()) {
+                        append("&pageToken=")
+                        append(java.net.URLEncoder.encode(pageToken!!, "UTF-8"))
+                    }
+                }
 
-fun open(urlStr: String): HttpURLConnection =
-    (URL(urlStr).openConnection() as HttpURLConnection).apply {
-        requestMethod = "GET"
-        setRequestProperty("Accept", "application/json")
-        // Prefer header key to avoid leaking the key in logs/URLs
-        setRequestProperty("x-goog-api-key", apiKey)
-        connectTimeout = 20000
-        readTimeout = 30000
-    }
+                fun open(urlStr: String): HttpURLConnection =
+                    (URL(urlStr).openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        setRequestProperty("Accept", "application/json")
+                        if (usesBackendGoogle) {
+                            setRequestProperty("Authorization", "Bearer $firebaseToken")
+                        } else {
+                            // Prefer header key to avoid leaking the key in logs/URLs
+                            setRequestProperty("x-goog-api-key", apiKey)
+                        }
+                        connectTimeout = 20000
+                        readTimeout = 30000
+                    }
 
-var connection = open(urlStrNoKey)
-var responseCode = connection.responseCode
-var body = (if (responseCode in 200..299) connection.inputStream else connection.errorStream)
-    ?.bufferedReader()
-    ?.readText()
-    .orEmpty()
+                var connection = open(urlStrNoKey)
+                var responseCode = connection.responseCode
+                var body = (if (responseCode in 200..299) connection.inputStream else connection.errorStream)
+                    ?.bufferedReader()
+                    ?.readText()
+                    .orEmpty()
 
-if (responseCode !in 200..299) {
-    Log.w(TAG, "Google AI Studio models.list failed without key in URL, retrying with ?key=. HTTP $responseCode - $body")
-    connection.disconnect()
+                if (!usesBackendGoogle && responseCode !in 200..299) {
+                    Log.w(TAG, "Google AI Studio models.list failed without key in URL, retrying with ?key=. HTTP $responseCode - $body")
+                    connection.disconnect()
 
-    connection = open(urlStrWithKey)
-    responseCode = connection.responseCode
-    body = (if (responseCode in 200..299) connection.inputStream else connection.errorStream)
-        ?.bufferedReader()
-        ?.readText()
-        .orEmpty()
-}
+                    connection = open(urlStrWithKey)
+                    responseCode = connection.responseCode
+                    body = (if (responseCode in 200..299) connection.inputStream else connection.errorStream)
+                        ?.bufferedReader()
+                        ?.readText()
+                        .orEmpty()
+                }
 
-if (responseCode !in 200..299) {
-    Log.e(TAG, "Google AI Studio models.list failed: HTTP $responseCode - $body")
-    return@withContext Result.failure(Exception("Google AI Studio models.list failed: HTTP $responseCode"))
-}
+                if (responseCode !in 200..299) {
+                    Log.e(TAG, "Google AI Studio models.list failed: HTTP $responseCode - $body")
+                    return@withContext Result.failure(Exception("Google AI Studio models.list failed: HTTP $responseCode"))
+                }
 
-val root = json.parseToJsonElement(body).jsonObject
+                val root = json.parseToJsonElement(body).jsonObject
                 val models = root["models"]?.jsonArray ?: kotlinx.serialization.json.JsonArray(emptyList())
 
                 models.forEach { element ->

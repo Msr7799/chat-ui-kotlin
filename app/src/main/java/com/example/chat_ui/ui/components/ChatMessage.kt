@@ -36,6 +36,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import coil.size.Precision
+import com.example.chat_ui.utils.CloudinaryUrlUtils
 import com.example.chat_ui.data.Message
 import com.example.chat_ui.ui.theme.ThemeColors
 import com.example.chat_ui.ui.theme.ThemeManager
@@ -126,7 +130,6 @@ fun ChatMessageBubble(
                     totalCount = message.getAlternativesCount(),
                     onPrevious = { onAlternativeChange?.invoke(message.currentAlternativeIndex - 1) },
                     onNext = { onAlternativeChange?.invoke(message.currentAlternativeIndex + 1) },
-                    onRegenerate = onRetry,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -488,7 +491,16 @@ private fun GeneratedImagesDisplay(
                     .clickable { selectedImageUrl = imageUrls[index] }
             ) {
                 AsyncImage(
-                    model = imageUrls[index],
+                    model = ImageRequest.Builder(LocalContext.current)
+                            .data(CloudinaryUrlUtils.galleryThumbnailUrl(imageUrls[index]))
+                            .size(360, 360)
+                            .precision(Precision.INEXACT)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .allowHardware(true)
+                            .allowRgb565(true)
+                            .crossfade(false)
+                            .build(),
                     contentDescription = "Generated image ${index + 1}",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -525,7 +537,16 @@ private fun FullscreenImageViewer(
                 .clickable { onDismiss() }
         ) {
             AsyncImage(
-                model = imageUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(CloudinaryUrlUtils.previewUrl(imageUrl))
+                    .size(1200, 1200)
+                    .precision(Precision.INEXACT)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .allowHardware(true)
+                    .allowRgb565(true)
+                    .crossfade(false)
+                    .build(),
                 contentDescription = "Fullscreen image",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit

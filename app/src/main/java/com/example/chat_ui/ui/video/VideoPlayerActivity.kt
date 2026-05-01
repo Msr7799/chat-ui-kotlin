@@ -9,13 +9,13 @@ import android.os.Environment
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.chat_ui.R
 import com.example.chat_ui.data.firebase.FirebaseManager
 import com.example.chat_ui.databinding.ActivityVideoPlayerBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -117,7 +117,7 @@ class VideoPlayerActivity : AppCompatActivity() {
         binding.progressBar.visibility = View.VISIBLE
         binding.controlsContainer.visibility = View.GONE
         
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
                 // Delete from Firestore
                 FirebaseManager.firestore

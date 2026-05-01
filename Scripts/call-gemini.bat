@@ -5,7 +5,7 @@ set "PROJECT_ID=chat-ui-e1c11"
 set "LOCATION=us-central1"
 set "MODEL=gemini-2.0-flash-001"
 
-set "API_KEY=AIzaSyDu1AfHVVHPyDpeuOnvgomTJ4a4JBjxxT0" REM  Replace with your actual API Key
+set "API_KEY=your-api-key-here" REM  Replace with your actual API Key
 
 set "REQ=%TEMP%\vertex_gemini_req.json"
 set "OUT=%TEMP%\vertex_gemini_out.json"

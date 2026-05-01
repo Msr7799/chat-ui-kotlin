@@ -12,9 +12,45 @@
 /captures
 .externalNativeBuild
 .cxx
+.kotlin/
+
+# Environment files and local backend secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Android/local secret configuration
 keystore.properties
 local.properties
-client_secret_31197033030-hlho29vafgrek7sauoda44kvo1me77tl.apps.googleusercontent.com.json
+app/src/main/assets/config.properties
 config.properties
+
+# Firebase and Google OAuth/service account files
+google-services.json
+app/google-services.json
+client_secret*.json
+*service-account*.json
+*service_account*.json
+*credential*.json
+*credentials*.json
+oauth*.json
+
+# Signing keys and certificates
+keystore/
+/keystore/
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Logs can leak request headers, tokens, file paths, or API errors
+*.log
+crash_log.txt
+
 # Sensitive Docs
 Docs/

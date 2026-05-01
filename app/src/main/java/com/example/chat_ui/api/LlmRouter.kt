@@ -3,6 +3,8 @@ package com.example.chat_ui.api
 import android.content.Context
 import android.util.Log
 import com.example.chat_ui.config.ConfigManager
+import com.example.chat_ui.data.ApiProvider
+import com.example.chat_ui.utils.FirebaseAuthHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -63,7 +65,8 @@ object LlmRouter {
     suspend fun selectModel(
         messages: List<ChatApiClient.ChatMessage>, 
         hasImages: Boolean = false,
-        hasTools: Boolean = false
+        hasTools: Boolean = false,
+        hasDocuments: Boolean = false
     ): String = withContext(Dispatchers.IO) {
         val fallbackModel = ConfigManager.get(ConfigManager.Keys.LLM_ROUTER_FALLBACK_MODEL, "Qwen/Qwen3-235B-A22B-Instruct-2507")
         
@@ -88,6 +91,16 @@ object LlmRouter {
             val defaultVisionModel = "Qwen/Qwen2.5-VL-72B-Instruct"
             Log.i(TAG, "[HYBRID] Images detected - using default vision model: $defaultVisionModel")
             return@withContext defaultVisionModel
+        }
+
+        if (hasDocuments) {
+            val documentRoute = routes.find { it.name == "document_analysis" }
+            if (documentRoute != null) {
+                Log.i(TAG, "[HYBRID] Documents detected - using document route: ${documentRoute.primary_model}")
+                return@withContext documentRoute.primary_model
+            }
+            Log.i(TAG, "[HYBRID] Documents detected - using fallback text model: $fallbackModel")
+            return@withContext fallbackModel
         }
         
         if (routes.isEmpty()) {
@@ -192,15 +205,23 @@ Based on your analysis, provide your response in the following JSON format if yo
     }
     
     private suspend fun callRouterApi(baseUrl: String, model: String, prompt: String): String {
+        val providerConfig = ConfigManager.getProviderConfig()
+        val isBackendHuggingFace = providerConfig.provider == ApiProvider.HUGGINGFACE
+        val firebaseToken = if (isBackendHuggingFace) {
+            FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+        } else {
+            null
+        }
         val apiKey = ConfigManager.openAiApiKey
-        val url = URL("$baseUrl/chat/completions")
+        val url = URL(if (isBackendHuggingFace) "${baseUrl.trimEnd('/')}/chat" else "$baseUrl/chat/completions")
         val connection = url.openConnection() as HttpURLConnection
         
         connection.apply {
             requestMethod = "POST"
             setRequestProperty("Content-Type", "application/json")
-            if (apiKey.isNotBlank()) {
-                setRequestProperty("Authorization", "Bearer $apiKey")
+            when {
+                firebaseToken != null -> setRequestProperty("Authorization", "Bearer $firebaseToken")
+                apiKey.isNotBlank() -> setRequestProperty("Authorization", "Bearer $apiKey")
             }
             doOutput = true
             connectTimeout = 10000

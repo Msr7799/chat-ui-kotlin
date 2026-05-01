@@ -19,6 +19,15 @@
 		]
 	},
 	{
+		"name": "document_analysis",
+		"description": "Analyze attached readable documents such as PDF text, reports, contracts, resumes, and long files after text extraction.",
+		"primary_model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+		"fallback_models": [
+			"deepseek-ai/DeepSeek-V3.1",
+			"meta-llama/Llama-3.3-70B-Instruct"
+		]
+	},
+	{
 		"name": "job_app_docs",
 		"description": "Create ATS‑ready resumes and cover letters aligned to a job posting.",
 		"primary_model": "Qwen/Qwen3-235B-A22B-Instruct-2507",

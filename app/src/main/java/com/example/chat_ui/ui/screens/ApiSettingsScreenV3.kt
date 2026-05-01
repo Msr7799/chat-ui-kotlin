@@ -604,7 +604,15 @@ fun ApiSettingsScreenV3(onBackClick: () -> Unit) {
                         ConfigManager.saveProviderConfig(config)
                         Log.d("ApiSettingsScreenV3", "✓ ConfigManager.saveProviderConfig completed")
 
-                        // Save general settings
+                        // Save default model for the selected provider and keep legacy key in sync
+                        when (selectedProvider) {
+                            ApiProvider.GOOGLE_AI_STUDIO -> {
+                                ConfigManager.set(ConfigManager.Keys.GOOGLE_AI_STUDIO_DEFAULT_MODEL, defaultModel)
+                            }
+                            ApiProvider.HUGGINGFACE -> {
+                                ConfigManager.set(ConfigManager.Keys.HUGGINGFACE_DEFAULT_MODEL, defaultModel)
+                            }
+                        }
                         ConfigManager.set(ConfigManager.Keys.DEFAULT_MODEL, defaultModel)
 
                         // Save provider-specific settings for model routing alias

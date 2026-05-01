@@ -19,13 +19,13 @@ private val DarkColorScheme = darkColorScheme(
     background = DarkBackground,
     surface = DarkSurface,
     surfaceVariant = DarkSurfaceVariant,
-    onPrimary = TextPrimary,
+    onPrimary = Color(0xFF0E1116),
     onSecondary = TextPrimary,
-    onTertiary = TextPrimary,
+    onTertiary = Color(0xFF1C1200),
     onBackground = TextPrimary,
     onSurface = TextPrimary,
-    onSurfaceVariant = Color(0xFFD1D5DB),
-    outline = Color(0xFF9CA3AF),
+    onSurfaceVariant = TextSecondary,
+    outline = DarkBorder,
     error = AccentRed
 )
 
@@ -36,13 +36,13 @@ private val LightColorScheme = lightColorScheme(
     background = LightBackground,
     surface = LightSurface,
     surfaceVariant = LightSurfaceVariant,
-    onPrimary = LightSurface,
-    onSecondary = LightSurface,
-    onTertiary = LightSurface,
+    onPrimary = Color.White,
+    onSecondary = Color(0xFF1E1533),
+    onTertiary = Color(0xFF231800),
     onBackground = LightTextPrimary,
     onSurface = LightTextPrimary,
-    onSurfaceVariant = Color(0xFF6B7280),
-    outline = Color(0xFF9CA3AF),
+    onSurfaceVariant = LightTextSecondary,
+    outline = LightBorder,
     error = AccentRed
 )
 
@@ -60,13 +60,13 @@ private fun createColorScheme(colors: ThemeColors) = if (colors.isDark) {
         background = colors.background,
         surface = colors.surface,
         surfaceVariant = colors.surfaceVariant,
-        onPrimary = colors.textPrimary,
+        onPrimary = Color(0xFF0E1116),
         onSecondary = colors.textPrimary,
-        onTertiary = colors.textPrimary,
+        onTertiary = Color(0xFF1C1200),
         onBackground = colors.textPrimary,
         onSurface = colors.textPrimary,
-        onSurfaceVariant = Color(0xFFD1D5DB),
-        outline = Color(0xFF9CA3AF),
+        onSurfaceVariant = colors.textSecondary,
+        outline = colors.border,
         error = AccentRed
     )
 } else {
@@ -77,13 +77,13 @@ private fun createColorScheme(colors: ThemeColors) = if (colors.isDark) {
         background = colors.background,
         surface = colors.surface,
         surfaceVariant = colors.surfaceVariant,
-        onPrimary = colors.surface,
-        onSecondary = colors.surface,
-        onTertiary = colors.surface,
+        onPrimary = Color.White,
+        onSecondary = Color(0xFF1E1533),
+        onTertiary = Color(0xFF231800),
         onBackground = colors.textPrimary,
         onSurface = colors.textPrimary,
-        onSurfaceVariant = Color(0xFF6B7280),
-        outline = Color(0xFF9CA3AF),
+        onSurfaceVariant = colors.textSecondary,
+        outline = colors.border,
         error = AccentRed
     )
 }

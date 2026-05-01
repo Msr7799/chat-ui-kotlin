@@ -3,6 +3,7 @@ package com.example.chat_ui.mcp
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
 /**
@@ -146,24 +147,47 @@ object MCPToolExecutor {
      * Execute a tool call and return the result
      */
     suspend fun executeTool(toolCall: MCPToolCall): MCPToolResult {
+        return executeToolDetailed(toolCall).result
+    }
+
+    /**
+     * Execute a tool call and return a detailed trace for UI/debugging.
+     */
+    suspend fun executeToolDetailed(toolCall: MCPToolCall): MCPToolExecutionTrace {
         return withContext(Dispatchers.IO) {
             Log.i(TAG, "Executing tool: ${toolCall.toolName}")
             
             // Check if tool exists
             val tool = MCPManager.findTool(toolCall.toolName)
             if (tool == null) {
-                return@withContext MCPToolResult(
-                    content = "Tool '${toolCall.toolName}' not found. Available tools: ${MCPManager.getAllTools().map { it.name }}",
-                    isError = true,
-                    toolName = toolCall.toolName
+                return@withContext MCPToolExecutionTrace(
+                    toolName = toolCall.toolName,
+                    serverId = toolCall.serverId,
+                    serverName = MCPManager.getServerName(toolCall.serverId),
+                    input = toolCall.arguments,
+                    durationMs = 0,
+                    result = MCPToolResult(
+                        content = "Tool '${toolCall.toolName}' not found. Available tools: ${MCPManager.getAllTools().map { it.name }}",
+                        isError = true,
+                        toolName = toolCall.toolName
+                    )
                 )
             }
             
             // Execute via MCPManager
+            val startTime = System.currentTimeMillis()
             val result = MCPManager.callTool(toolCall.copy(serverId = tool.serverId))
+            val durationMs = (System.currentTimeMillis() - startTime).coerceAtLeast(0)
             Log.i(TAG, "Tool result: ${result.content.take(100)}...")
             
-            result
+            MCPToolExecutionTrace(
+                toolName = toolCall.toolName,
+                serverId = tool.serverId,
+                serverName = MCPManager.getServerName(tool.serverId),
+                input = toolCall.arguments,
+                result = result,
+                durationMs = durationMs
+            )
         }
     }
 
@@ -171,27 +195,69 @@ object MCPToolExecutor {
      * Execute all tool calls in a message and return formatted results
      */
     suspend fun executeAllToolCalls(content: String): List<MCPToolResult> {
+        return executeAllToolCallsDetailed(content).map { it.result }
+    }
+
+    suspend fun executeAllToolCallsDetailed(content: String): List<MCPToolExecutionTrace> {
         val toolCalls = parseToolCalls(content)
         if (toolCalls.isEmpty()) return emptyList()
         
-        return toolCalls.map { executeTool(it) }
+        return toolCalls.map { executeToolDetailed(it) }
     }
 
     /**
      * Format tool results for display or sending back to LLM
      */
-    fun formatToolResults(results: List<MCPToolResult>): String {
+    fun formatToolResults(results: List<MCPToolExecutionTrace>): String {
         if (results.isEmpty()) return ""
         
         return buildString {
             results.forEach { result ->
-                appendLine("**🔧 ${result.toolName}:**")
-                if (result.isError) {
-                    appendLine("❌ Error: ${result.content}")
+                appendLine("**🔧 ${result.serverName} / ${result.toolName}:**")
+                if (result.result.isError) {
+                    appendLine("❌ Error: ${result.result.content}")
                 } else {
-                    appendLine(result.content)
+                    appendLine(result.result.content)
                 }
                 appendLine()
+            }
+        }.trim()
+    }
+
+    fun buildDebugFoldContent(results: List<MCPToolExecutionTrace>): String {
+        if (results.isEmpty()) return "No MCP tool execution details."
+
+        return buildString {
+            results.forEachIndexed { index, trace ->
+                appendLine("MCP Server: ${trace.serverName}")
+                appendLine("Tool: ${trace.toolName}")
+                appendLine("Server ID: ${trace.serverId}")
+                appendLine("Duration: ${trace.durationMs} ms")
+                appendLine("Input:")
+                appendLine(prettyPrintJson(trace.input))
+                if (index != results.lastIndex) {
+                    appendLine()
+                    appendLine("---")
+                    appendLine()
+                }
+            }
+        }.trim()
+    }
+
+    fun buildOutputFoldContent(results: List<MCPToolExecutionTrace>): String {
+        if (results.isEmpty()) return ""
+
+        return buildString {
+            results.forEachIndexed { index, trace ->
+                appendLine("MCP Server: ${trace.serverName}")
+                appendLine("Tool: ${trace.toolName}")
+                appendLine("Output:")
+                appendLine(trace.result.content)
+                if (index != results.lastIndex) {
+                    appendLine()
+                    appendLine("---")
+                    appendLine()
+                }
             }
         }.trim()
     }
@@ -222,4 +288,9 @@ object MCPToolExecutor {
      * Check if MCP tools are available
      */
     fun hasAvailableTools(): Boolean = MCPManager.getTotalToolCount() > 0
+
+    private fun prettyPrintJson(arguments: Map<String, JsonElement>): String {
+        if (arguments.isEmpty()) return "{}"
+        return Json { prettyPrint = true }.encodeToString(JsonObject(arguments))
+    }
 }

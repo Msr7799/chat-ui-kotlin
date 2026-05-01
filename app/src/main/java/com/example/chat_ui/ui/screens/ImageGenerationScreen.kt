@@ -1,6 +1,7 @@
 package com.example.chat_ui.ui.screens
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Image
@@ -9,9 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,8 +28,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
-import com.example.chat_ui.ui.theme.ThemeManager
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import coil.size.Precision
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import com.example.chat_ui.config.ConfigManager
@@ -39,8 +42,12 @@ import com.example.chat_ui.data.ApiProvider
 import com.example.chat_ui.utils.FileAttachmentManager
 import com.example.chat_ui.utils.ImageProcessor
 import com.example.chat_ui.utils.PromptPreferences
+import com.example.chat_ui.utils.CloudinaryUrlUtils
 import com.example.chat_ui.viewmodel.ImageGenerationViewModel
 import kotlinx.coroutines.launch
+
+private const val THUMBNAIL_MAX_DIMENSION = 512
+private const val FULLSCREEN_MAX_DIMENSION = 1600
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,6 +106,7 @@ fun ImageGenerationScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
+                    .verticalScroll(rememberScrollState())
             ) {
                 // Model Selection Dropdown
                 ModelSelectionSection(
@@ -124,7 +132,7 @@ fun ImageGenerationScreen(
                     viewModel = viewModel,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .padding(bottom = 24.dp),
                     onImageClick = { index -> selectedImageIndex = index }
                 )
             }
@@ -518,22 +526,10 @@ private fun PromptInputSection(
                 .height(56.dp)
                 .padding(horizontal = 4.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (ThemeManager.isDarkMode) {
-                    Color(0xFF0078D4)
-                } else {
-                    Color(0xFF00315B)
-                },
-                contentColor = Color.White,
-                disabledContainerColor = if (ThemeManager.isDarkMode) {
-                    Color(0xFF374151)
-                } else {
-                    Color(0xFFD1D5DB)
-                },
-                disabledContentColor = if (ThemeManager.isDarkMode) {
-                    Color(0xFF9CA3AF)
-                } else {
-                    Color(0xFF6B7280)
-                }
+                containerColor = colorScheme.primary,
+                contentColor = colorScheme.onPrimary,
+                disabledContainerColor = colorScheme.surfaceVariant,
+                disabledContentColor = colorScheme.onSurfaceVariant
             ),
             shape = RoundedCornerShape(12.dp),
             elevation = ButtonDefaults.buttonElevation(
@@ -567,11 +563,13 @@ private fun GeneratedImagesSection(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxWidth()) {
         if (viewModel.generatedImages.isEmpty() && !viewModel.isGenerating) {
             // Empty State
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -594,14 +592,13 @@ private fun GeneratedImagesSection(
                 )
             }
         } else if (viewModel.generatedImages.isNotEmpty()) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                contentPadding = PaddingValues(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(viewModel.generatedImages.size) { index ->
-                    val imageData = viewModel.generatedImages[index]
+                viewModel.generatedImages.forEachIndexed { index, imageData ->
                     GeneratedImageCard(
                         imageData = imageData,
                         onClick = { onImageClick(index) }
@@ -644,7 +641,9 @@ private fun GeneratedImageCard(
     onClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val cloudUrl = imageData.cloudinaryUrl
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -652,19 +651,23 @@ private fun GeneratedImageCard(
             .background(colorScheme.surfaceVariant)
             .clickable { onClick() }
     ) {
-        // Image
-        val bitmap = remember(imageData.base64Data) {
-            try {
-                val imageBytes = Base64.decode(imageData.base64Data, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-            } catch (e: Exception) {
-                null
+        if (!cloudUrl.isNullOrBlank()) {
+            val thumbUrl = remember(cloudUrl) { CloudinaryUrlUtils.galleryThumbnailUrl(cloudUrl) }
+            val request = remember(thumbUrl) {
+                ImageRequest.Builder(context)
+                    .data(thumbUrl)
+                    .size(512, 512)
+                    .precision(Precision.INEXACT)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .networkCachePolicy(CachePolicy.ENABLED)
+                    .allowHardware(true)
+                    .allowRgb565(true)
+                    .crossfade(false)
+                    .build()
             }
-        }
-        
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
+            AsyncImage(
+                model = request,
                 contentDescription = imageData.prompt,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -672,18 +675,39 @@ private fun GeneratedImageCard(
                 contentScale = ContentScale.Crop
             )
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .background(colorScheme.errorContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Failed to load", color = colorScheme.onErrorContainer)
+            val bitmap = remember(imageData.base64Data.hashCode()) {
+                decodeBase64BitmapSampled(
+                    base64Data = imageData.base64Data,
+                    maxDimension = THUMBNAIL_MAX_DIMENSION
+                )
+            }
+
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = imageData.prompt,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .background(colorScheme.errorContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Preview is too large to load safely",
+                        color = colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
             }
         }
-        
-        // Info
+
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = imageData.prompt.take(60) + if (imageData.prompt.length > 60) "..." else "",
@@ -832,79 +856,185 @@ private fun FullScreenImageViewer(
     onDismiss: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colorScheme.surface.copy(alpha = 0.95f))
-            .clickable { onDismiss() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val cloudUrl = image.cloudinaryUrl
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        val bitmap = remember(image.base64Data) {
-            try {
-                val imageBytes = Base64.decode(image.base64Data, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-            } catch (e: Exception) {
+        val bitmap = remember(image.base64Data.hashCode(), cloudUrl) {
+            if (cloudUrl.isNullOrBlank()) {
+                decodeBase64BitmapSampled(
+                    base64Data = image.base64Data,
+                    maxDimension = FULLSCREEN_MAX_DIMENSION
+                )
+            } else {
                 null
             }
         }
-        
-        Column(
-            modifier = Modifier.fillMaxSize()
+        Card(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.9f)),
+            shape = RoundedCornerShape(0.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.background)
         ) {
-            // Top Bar
-            TopAppBar(
-                title = { Text("Image Viewer") },
-                navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, "Close")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colorScheme.surface
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                TopAppBar(
+                    title = { Text("Image Viewer") },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = colorScheme.surface)
                 )
-            )
-            
-            // Image
-            if (bitmap != null) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
+
+                if (!cloudUrl.isNullOrBlank()) {
+                    val previewUrl = remember(cloudUrl) { CloudinaryUrlUtils.previewUrl(cloudUrl) }
+                    val request = remember(previewUrl) {
+                        ImageRequest.Builder(context)
+                            .data(previewUrl)
+                            .size(1600, 1600)
+                            .precision(Precision.INEXACT)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .networkCachePolicy(CachePolicy.ENABLED)
+                            .allowHardware(true)
+                            .allowRgb565(true)
+                            .crossfade(false)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = request,
+                        contentDescription = image.prompt,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    ImageInfoPanel(
+                        image = image,
+                        sizeText = "Size: ${image.width ?: "?"} × ${image.height ?: "?"}",
+                        savedToCloudinary = true
+                    )
+                } else if (bitmap != null) {
                     Image(
                         bitmap = bitmap.asImageBitmap(),
                         contentDescription = image.prompt,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         contentScale = ContentScale.Fit
                     )
-                }
-                
-                // Image Info
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = colorScheme.surfaceVariant
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    ImageInfoPanel(
+                        image = image,
+                        sizeText = "Size: ${bitmap.width} × ${bitmap.height}",
+                        savedToCloudinary = false
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(280.dp)
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(colorScheme.errorContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = image.prompt,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Model: ${image.model.removePrefix("google/")}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colorScheme.outline
-                        )
-                        Text(
-                            text = "Size: ${bitmap.width} × ${bitmap.height}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colorScheme.outline
+                            text = "Image is too large to decode safely on this device.",
+                            color = colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(20.dp)
                         )
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun ImageInfoPanel(
+    image: ImageGenerationViewModel.GeneratedImageData,
+    sizeText: String,
+    savedToCloudinary: Boolean
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = colorScheme.surfaceVariant
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = image.prompt,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Model: ${image.model.removePrefix("google/")}",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = sizeText,
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant
+            )
+            if (savedToCloudinary) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Cloudinary: saved",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.primary
+                )
+            }
+        }
+    }
+}
+private fun decodeBase64BitmapSampled(base64Data: String, maxDimension: Int): Bitmap? {
+    if (base64Data.isBlank()) return null
+    if (base64Data.length > 28_000_000) return null
+    return try {
+        val imageBytes = Base64.decode(base64Data, Base64.DEFAULT)
+        val boundsOptions = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, boundsOptions)
+
+        if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+            return null
+        }
+
+        val decodeOptions = BitmapFactory.Options().apply {
+            inSampleSize = calculateInSampleSize(boundsOptions, maxDimension)
+            // RGB_565 halves memory use versus ARGB_8888, enough for generated-image previews.
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, decodeOptions)
+    } catch (_: OutOfMemoryError) {
+        null
+    } catch (_: IllegalArgumentException) {
+        null
+    }
+}
+
+private fun calculateInSampleSize(options: BitmapFactory.Options, maxDimension: Int): Int {
+    var inSampleSize = 1
+    val width = options.outWidth
+    val height = options.outHeight
+
+    while ((width / inSampleSize) > maxDimension || (height / inSampleSize) > maxDimension) {
+        inSampleSize *= 2
+    }
+
+    return inSampleSize.coerceAtLeast(1)
 }

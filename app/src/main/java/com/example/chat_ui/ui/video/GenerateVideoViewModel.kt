@@ -127,7 +127,7 @@ class GenerateVideoViewModel : ViewModel() {
         generationJob?.cancel()
 
         // Configuration validation
-        val providerConfig = ConfigManager.getProviderConfig()
+        val providerConfig = ConfigManager.getProviderConfigWithApiKey(context)
         val isGoogleAiStudio = providerConfig.provider == ApiProvider.GOOGLE_AI_STUDIO
 
         // Google AI Studio (Gemini API) runs without the custom backend for PRIVATE generation.

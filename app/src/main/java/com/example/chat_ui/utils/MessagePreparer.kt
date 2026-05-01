@@ -97,59 +97,47 @@ object MessagePreparer {
             emptyList()
         }
         
-        // Process text files - inject as document content
-        val textContent = if (textFiles.isNotEmpty()) {
-            textFiles.mapNotNull { file ->
+        // Process text/PDF files - inject readable content as plain text documents.
+        // مهم: أغلب HuggingFace/OpenAI-compatible routers لا تقبل PDF خام داخل content.
+        val readableDocumentContent = buildList {
+            textFiles.mapNotNullTo(this) { file ->
                 file.getTextContent()?.let { content ->
                     """<document name="${file.name}" type="${file.mime}">
 $content
 </document>"""
                 }
-            }.joinToString("\n\n")
-        } else {
-            ""
-        }
-        
-        // Process PDF files - add as base64 for models that support it
-        val pdfParts = if (isMultimodal && pdfFiles.isNotEmpty()) {
-            pdfFiles.map { file ->
-                buildJsonObject {
-                    put("type", "file")
-                    putJsonObject("file") {
-                        put("filename", file.name)
-                        put("file_data", "data:${file.mime};base64,${file.value}")
-                    }
+            }
+
+            pdfFiles.mapNotNullTo(this) { file ->
+                file.getTextContent()?.let { content ->
+                    """<document name="${file.name}" type="${file.mime}" source="pdf-text-extraction">
+$content
+</document>"""
                 }
             }
-        } else {
-            // For non-multimodal, add PDF info as text notice
-            emptyList()
-        }
-        
-        // Add PDF notice for non-multimodal models
-        val pdfNotice = if (!isMultimodal && pdfFiles.isNotEmpty()) {
-            pdfFiles.joinToString("\n") { file ->
-                "[PDF file attached: ${file.name} - This model may not be able to read PDF content directly. Please use a vision-enabled model like Qwen-VL, GLM-4.5V, or aya-vision.]"
-            }
-        } else {
-            ""
+        }.joinToString("\n\n")
+
+        val unreadablePdfNotice = pdfFiles
+            .filter { it.getTextContent().isNullOrBlank() }
+            .joinToString("\n") { file ->
+                "[PDF file attached: ${file.name}. لم أستطع استخراج نص قابل للقراءة منه محليًا. إذا كان PDF مصورًا أو ممسوحًا ضوئيًا، يحتاج OCR قبل التحليل.]"
         }
         
         // Combine text content with message
         val messageText = buildString {
-            if (textContent.isNotEmpty()) {
-                append(textContent)
+            if (readableDocumentContent.isNotEmpty()) {
+                append(readableDocumentContent)
                 append("\n\n")
             }
-            if (pdfNotice.isNotEmpty()) {
-                append(pdfNotice)
+            if (unreadablePdfNotice.isNotEmpty()) {
+                append(unreadablePdfNotice)
                 append("\n\n")
             }
             append(message.content)
         }
         
         // Build final message
-        val hasMultimodalContent = (imageParts.isNotEmpty() || pdfParts.isNotEmpty()) && isMultimodal
+        val hasMultimodalContent = imageParts.isNotEmpty() && isMultimodal
         
         return if (hasMultimodalContent) {
             // Multimodal format with content array
@@ -163,8 +151,6 @@ $content
                     })
                     // Add image parts
                     imageParts.forEach { add(it) }
-                    // Add PDF parts (for models that support file attachments)
-                    pdfParts.forEach { add(it) }
                 }
             }
         } else {
@@ -212,12 +198,19 @@ $content
     fun hasPdfs(messages: List<ChatMessage>): Boolean {
         return messages.any { msg -> msg.files.any { it.isPdf() } }
     }
+
+    /**
+     * Check if any message has readable documents (PDF/text files).
+     */
+    fun hasDocuments(messages: List<ChatMessage>): Boolean {
+        return messages.any { msg -> msg.files.any { it.isPdf() || (it.isTextFile() && !it.isImage()) } }
+    }
     
     /**
      * Check if any message has multimodal content (images or PDFs)
      */
     fun hasMultimodalContent(messages: List<ChatMessage>): Boolean {
-        return hasImages(messages) || hasPdfs(messages)
+        return hasImages(messages)
     }
     
     /**
@@ -244,18 +237,26 @@ $content
                 
                 // Process files
                 val imageFiles = message.files.filter { it.isImage() }
+                val pdfFiles = message.files.filter { it.isPdf() }
                 val textFiles = message.files.filter { it.isTextFile() && !it.isPdf() }
                 
                 // Inject text files as document content
-                val textContent = if (textFiles.isNotEmpty()) {
-                    textFiles.mapNotNull { file ->
+                val textContent = buildList {
+                    textFiles.mapNotNullTo(this) { file ->
                         file.getTextContent()?.let { content ->
                             """<document name="${file.name}" type="${file.mime}">
 $content
 </document>"""
                         }
-                    }.joinToString("\n\n")
-                } else ""
+                    }
+                    pdfFiles.mapNotNullTo(this) { file ->
+                        file.getTextContent()?.let { content ->
+                            """<document name="${file.name}" type="${file.mime}" source="pdf-text-extraction">
+$content
+</document>"""
+                        }
+                    }
+                }.joinToString("\n\n")
                 
                 val messageText = buildString {
                     if (textContent.isNotEmpty()) {

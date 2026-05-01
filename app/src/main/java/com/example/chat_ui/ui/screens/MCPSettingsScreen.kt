@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.chat_ui.mcp.*
+import com.example.chat_ui.ui.theme.ThemeManager
 
 /**
  * MCP Settings Screen - Modal style matching JavaScript Chat UI
@@ -59,6 +61,11 @@ fun MCPSettingsScreen(
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
+    val themeColors =
+        ThemeManager.getThemeColors(
+            ThemeManager.currentPreference,
+            androidx.compose.foundation.isSystemInDarkTheme()
+        )
     
     val servers by MCPManager.servers.collectAsState()
     val serverStatuses by MCPManager.serverStatuses.collectAsState()
@@ -122,10 +129,27 @@ fun MCPSettingsScreen(
                 // Header with close button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    IconButton(
+                        onClick = {
+                            if (currentView == MCPView.LIST) {
+                                onBackClick()
+                            } else {
+                                currentView = MCPView.LIST
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colorScheme.onSurface
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = when (currentView) {
                                 MCPView.LIST -> "MCP Servers"
@@ -178,7 +202,8 @@ fun MCPSettingsScreen(
                             onAddServerClick = { currentView = MCPView.ADD_SERVER },
                             onToggleServer = { MCPManager.toggleServer(context, it) },
                             onHealthCheck = { MCPManager.reconnectServer(it) },
-                            onDeleteServer = { showDeleteConfirm = it }
+                            onDeleteServer = { showDeleteConfirm = it },
+                            themeColors = themeColors
                         )
                     }
                     
@@ -233,7 +258,8 @@ private fun MCPServerListView(
     onAddServerClick: () -> Unit,
     onToggleServer: (String) -> Unit,
     onHealthCheck: (String) -> Unit,
-    onDeleteServer: (MCPServerConfig) -> Unit
+    onDeleteServer: (MCPServerConfig) -> Unit,
+    themeColors: com.example.chat_ui.ui.theme.ThemeColors
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
@@ -248,7 +274,7 @@ private fun MCPServerListView(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 color = if (enabledCount > 0) 
-                    Color(0xFF1E3A5F).copy(alpha = 0.3f) 
+                    colorScheme.primaryContainer.copy(alpha = 0.65f) 
                 else 
                     colorScheme.surfaceVariant
             ) {
@@ -264,13 +290,13 @@ private fun MCPServerListView(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0xFF2563EB).copy(alpha = 0.2f)),
+                                    .background(colorScheme.primary.copy(alpha = 0.18f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     Icons.Default.Extension,
                                     contentDescription = null,
-                                    tint = Color(0xFF3B82F6),
+                                    tint = colorScheme.primary,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -343,7 +369,7 @@ private fun MCPServerListView(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2563EB)
+                            containerColor = colorScheme.primary
                         )
                     ) {
                         Icon(
@@ -377,7 +403,8 @@ private fun MCPServerListView(
                     onToggle = { onToggleServer(server.id) },
                     onHealthCheck = { onHealthCheck(server.id) },
                     onDelete = null, // Base servers can't be deleted
-                    isHfMcp = MCPUtils.isHfMcpEndpoint(server.url)
+                    isHfMcp = MCPUtils.isHfMcpEndpoint(server.url),
+                    themeColors = themeColors
                 )
             }
         }
@@ -431,7 +458,7 @@ private fun MCPServerListView(
                             onClick = onAddServerClick,
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF2563EB)
+                                containerColor = colorScheme.primary
                             )
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -450,7 +477,8 @@ private fun MCPServerListView(
                     onToggle = { onToggleServer(server.id) },
                     onHealthCheck = { onHealthCheck(server.id) },
                     onDelete = { onDeleteServer(server) },
-                    isHfMcp = false
+                    isHfMcp = false,
+                    themeColors = themeColors
                 )
             }
         }
@@ -500,7 +528,8 @@ private fun ServerCardNew(
     onToggle: () -> Unit,
     onHealthCheck: () -> Unit,
     onDelete: (() -> Unit)?,
-    isHfMcp: Boolean
+    isHfMcp: Boolean,
+    themeColors: com.example.chat_ui.ui.theme.ThemeColors
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var isLoadingHealth by remember { mutableStateOf(false) }
@@ -521,11 +550,11 @@ private fun ServerCardNew(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) 
-            Color(0xFF1E3A5F).copy(alpha = 0.2f) 
+            colorScheme.primaryContainer.copy(alpha = 0.45f) 
         else 
-            colorScheme.surfaceVariant,
+            colorScheme.surfaceVariant.copy(alpha = 0.92f),
         border = if (isSelected) 
-            BorderStroke(1.dp, Color(0xFF3B82F6).copy(alpha = 0.3f)) 
+            BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.35f)) 
         else 
             null
     ) {
@@ -558,8 +587,8 @@ private fun ServerCardNew(
                     checked = isSelected,
                     onCheckedChange = { onToggle() },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = Color(0xFF3B82F6)
+                        checkedThumbColor = colorScheme.onPrimary,
+                        checkedTrackColor = colorScheme.primary
                     )
                 )
             }

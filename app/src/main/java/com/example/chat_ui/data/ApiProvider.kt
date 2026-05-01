@@ -100,8 +100,11 @@ data class ProviderConfig(
      * Check if configuration is valid
      */
     fun isValid(): Boolean {
-        // Any provider with API key or Google Auth
-        return baseUrl.isNotBlank() && (apiKey.isNotBlank() || useGoogleAuth)
+        return when (provider) {
+            // HuggingFace يمر الآن عبر Go backend، لذلك لا نحتاج HF API key داخل Android.
+            ApiProvider.HUGGINGFACE -> baseUrl.isNotBlank()
+            ApiProvider.GOOGLE_AI_STUDIO -> baseUrl.isNotBlank() && (apiKey.isNotBlank() || useGoogleAuth || baseUrl.contains("/v1/google"))
+        }
     }
 
     /**

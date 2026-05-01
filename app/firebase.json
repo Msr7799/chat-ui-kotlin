@@ -7,5 +7,18 @@
   },
   "database": {
     "rules": "database.rules.json"
+  },
+  "remoteconfig": {
+    "template": "remoteconfig.template.json"
+  },
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "My App",
+        "supportEmail": "bibf101academic@gmail.com"
+      }
+    }
   }
 }

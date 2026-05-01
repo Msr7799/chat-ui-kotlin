@@ -1,8 +1,19 @@
 package com.example.chat_ui.api
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
 import com.example.chat_ui.config.ConfigManager
+import com.example.chat_ui.data.ApiProvider
+import com.example.chat_ui.utils.FirebaseAuthHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okio.BufferedSink
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -10,12 +21,22 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.TimeUnit
 
 /**
  * Chat API Client - OpenAI-compatible API client
  * Uses configuration from ConfigManager
  */
 class ChatApiClient {
+    private val TAG = "ChatApiClient"
+
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(120, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .callTimeout(180, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
     
     data class ChatMessage(
         val role: String, // "user", "assistant", "system"
@@ -106,13 +127,21 @@ class ChatApiClient {
                 return@withContext chatCompletionGoogleAIStudio(messages, model, temperature, maxTokens)
             }
             
-            val url = URL("$baseUrl/chat/completions")
+            val isBackendHuggingFace = providerConfig.provider == ApiProvider.HUGGINGFACE
+            val firebaseToken = if (isBackendHuggingFace) {
+                FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+                    ?: return@withContext ApiResult.Error("Please sign in before sending chat requests")
+            } else {
+                null
+            }
+
+            val url = URL(if (isBackendHuggingFace) "$baseUrl/chat" else "$baseUrl/chat/completions")
             val connection = url.openConnection() as HttpURLConnection
             
             connection.apply {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
-                setRequestProperty("Authorization", "Bearer $apiKey")
+                setRequestProperty("Authorization", "Bearer ${firebaseToken ?: apiKey}")
                 doOutput = true
                 connectTimeout = 30000
                 readTimeout = 60000
@@ -195,6 +224,61 @@ class ChatApiClient {
             ApiResult.Error(e.message ?: "Unknown error occurred")
         }
     }
+
+    /**
+     * Send one PDF to the backend as multipart/form-data stream.
+     * الأمان: لا نقرأ PDF كاملًا في الذاكرة ولا نحوله Base64 داخل Android.
+     */
+    suspend fun chatCompletionWithPdfFile(
+        context: Context,
+        fileUri: Uri,
+        fileName: String,
+        mimeType: String,
+        sizeBytes: Long,
+        message: String,
+        model: String = ConfigManager.defaultModel
+    ): ApiResult<ChatResponse> = withContext(Dispatchers.IO) {
+        try {
+            val providerConfig = ConfigManager.getProviderConfig()
+            if (providerConfig.provider != ApiProvider.HUGGINGFACE) {
+                return@withContext ApiResult.Error("PDF backend upload is supported only through the Go backend")
+            }
+
+            val firebaseToken = FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+                ?: return@withContext ApiResult.Error("Please sign in before sending file requests")
+
+            val effectiveMime = mimeType.ifBlank { "application/pdf" }
+            val fileBody = uriRequestBody(context, fileUri, effectiveMime, sizeBytes)
+            val requestBody = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("message", message)
+                .addFormDataPart("model", model)
+                .addFormDataPart("file", fileName, fileBody)
+                .build()
+
+            val request = Request.Builder()
+                .url("${providerConfig.baseUrl.trimEnd('/')}/chat/with-file")
+                .addHeader("Authorization", "Bearer $firebaseToken")
+                .post(requestBody)
+                .build()
+
+            Log.i(
+                TAG,
+                "Uploading PDF to backend: name=$fileName, mime=$effectiveMime, bytes=$sizeBytes, model=$model"
+            )
+
+            okHttpClient.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string().orEmpty()
+                if (response.isSuccessful) {
+                    parseOpenAIChatResponse(responseBody, model)
+                } else {
+                    ApiResult.Error(parseErrorMessage(responseBody), response.code)
+                }
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Unknown error occurred")
+        }
+    }
     
     /**
      * Handle Google AI Studio API calls (different format than OpenAI)
@@ -206,23 +290,39 @@ class ChatApiClient {
         maxTokens: Int?
     ): ApiResult<ChatResponse> = withContext(Dispatchers.IO) {
         try {
-            val apiKey = ConfigManager.openAiApiKey
+            val providerConfig = ConfigManager.getProviderConfig()
+            val apiKey = providerConfig.apiKey
             val geminiConfig = ConfigManager.getGoogleGeminiConfig()
             val modelName = if (model.startsWith("google/")) model.substringAfter("google/") else model
-
-            val providerConfig = ConfigManager.getProviderConfig()
+            val usesBackendGoogle = providerConfig.baseUrl.contains("/v1/google")
             val isBetaOrAlphaApi =
                 providerConfig.baseUrl.contains("/v1beta") || providerConfig.baseUrl.contains("/v1alpha")
+
+            val firebaseToken = if (usesBackendGoogle) {
+                FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+                    ?: return@withContext ApiResult.Error("Please sign in before using Google Studio")
+            } else null
+
+            if (!usesBackendGoogle && apiKey.isBlank()) {
+                return@withContext ApiResult.Error("Google AI Studio API key is missing")
+            }
 
             val supportsThinkingAndMediaConfig = modelName.startsWith("gemini-3") && isBetaOrAlphaApi
             
             // Google AI Studio endpoint: /v1beta/models/{model}:generateContent
-            val url = URL("https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey")
+            val baseUrl = providerConfig.baseUrl.trimEnd('/')
+            val url = URL(
+                if (usesBackendGoogle) "$baseUrl/models/$modelName:generateContent"
+                else "$baseUrl/models/$modelName:generateContent?key=$apiKey"
+            )
             val connection = url.openConnection() as HttpURLConnection
             
             connection.apply {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
+                if (firebaseToken != null) {
+                    setRequestProperty("Authorization", "Bearer $firebaseToken")
+                }
                 doOutput = true
                 connectTimeout = 30000
                 readTimeout = 60000
@@ -363,18 +463,94 @@ class ChatApiClient {
             ApiResult.Error(e.message ?: "Unknown error occurred")
         }
     }
+
+    private fun uriRequestBody(
+        context: Context,
+        uri: Uri,
+        mimeType: String,
+        sizeBytes: Long
+    ): RequestBody {
+        return object : RequestBody() {
+            override fun contentType() = mimeType.toMediaTypeOrNull()
+
+            override fun contentLength(): Long = if (sizeBytes >= 0) sizeBytes else -1L
+
+            override fun writeTo(sink: BufferedSink) {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        sink.write(buffer, 0, read)
+                    }
+                } ?: error("Cannot open attached file")
+            }
+        }
+    }
+
+    private fun parseOpenAIChatResponse(response: String, fallbackModel: String): ApiResult<ChatResponse> {
+        return try {
+            val jsonResponse = JSONObject(response)
+            val choices = jsonResponse.getJSONArray("choices")
+
+            if (choices.length() == 0) {
+                return ApiResult.Error("No response from API")
+            }
+
+            val choice = choices.getJSONObject(0)
+            val message = choice.getJSONObject("message")
+            val usage = if (jsonResponse.has("usage")) {
+                val usageJson = jsonResponse.getJSONObject("usage")
+                Usage(
+                    promptTokens = usageJson.optInt("prompt_tokens", 0),
+                    completionTokens = usageJson.optInt("completion_tokens", 0),
+                    totalTokens = usageJson.optInt("total_tokens", 0)
+                )
+            } else null
+
+            ApiResult.Success(
+                ChatResponse(
+                    id = jsonResponse.optString("id", ""),
+                    content = message.optString("content", ""),
+                    model = jsonResponse.optString("model", fallbackModel),
+                    finishReason = choice.optString("finish_reason"),
+                    usage = usage
+                )
+            )
+        } catch (e: Exception) {
+            ApiResult.Error("Invalid API response")
+        }
+    }
+
+    private fun parseErrorMessage(response: String): String {
+        return try {
+            JSONObject(response).optJSONObject("error")?.optString("message")
+                ?: JSONObject(response).optString("error", response)
+        } catch (_: Exception) {
+            response.ifBlank { "Request failed" }
+        }
+    }
     
     /**
      * Get available models
      */
     suspend fun getModels(): ApiResult<List<Model>> = withContext(Dispatchers.IO) {
         try {
+            val providerConfig = ConfigManager.getProviderConfig()
+            val isBackendHuggingFace = providerConfig.provider == ApiProvider.HUGGINGFACE
+            val firebaseToken = if (isBackendHuggingFace) {
+                FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+                    ?: return@withContext ApiResult.Error("Please sign in before fetching models")
+            } else {
+                null
+            }
+
             val url = URL("$baseUrl/models")
             val connection = url.openConnection() as HttpURLConnection
             
             connection.apply {
                 requestMethod = "GET"
-                setRequestProperty("Authorization", "Bearer $apiKey")
+                setRequestProperty("Authorization", "Bearer ${firebaseToken ?: apiKey}")
                 connectTimeout = 10000
                 readTimeout = 30000
             }
@@ -431,16 +607,16 @@ class ChatApiClient {
 
     suspend fun testConnection(config: com.example.chat_ui.data.ProviderConfig): ApiResult<Unit> = withContext(Dispatchers.IO) {
         try {
-            if (config.apiKey.isBlank()) {
+            if (config.provider != ApiProvider.HUGGINGFACE && config.apiKey.isBlank()) {
                 return@withContext ApiResult.Error("Missing API key")
             }
 
             return@withContext when (config.provider) {
-                com.example.chat_ui.data.ApiProvider.GOOGLE_AI_STUDIO -> {
+                ApiProvider.GOOGLE_AI_STUDIO -> {
                     testGoogleAiStudio(config.apiKey)
                 }
-                com.example.chat_ui.data.ApiProvider.HUGGINGFACE -> {
-                    testOpenAiCompatible(config.baseUrl, config.apiKey)
+                ApiProvider.HUGGINGFACE -> {
+                    testBackendCompatible(config.baseUrl)
                 }
             }
         } catch (e: Exception) {
@@ -475,6 +651,32 @@ class ChatApiClient {
                 }
 
                 ApiResult.Error("Google AI Studio Error: $errorMessage", responseCode)
+            }
+        } catch (e: Exception) {
+            ApiResult.Error(e.message ?: "Unknown error occurred")
+        }
+    }
+
+    private suspend fun testBackendCompatible(baseUrl: String): ApiResult<Unit> = withContext(Dispatchers.IO) {
+        val firebaseToken = FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+            ?: return@withContext ApiResult.Error("Please sign in before testing backend")
+
+        try {
+            val url = URL("${baseUrl.trimEnd('/')}/models")
+            val connection = url.openConnection() as HttpURLConnection
+
+            connection.apply {
+                requestMethod = "GET"
+                setRequestProperty("Authorization", "Bearer $firebaseToken")
+                connectTimeout = 10000
+                readTimeout = 30000
+            }
+
+            val responseCode = connection.responseCode
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                ApiResult.Success(Unit)
+            } else {
+                ApiResult.Error("Backend rejected request", responseCode)
             }
         } catch (e: Exception) {
             ApiResult.Error(e.message ?: "Unknown error occurred")

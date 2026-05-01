@@ -67,7 +67,6 @@ fun ProfileScreen(
         var isLoading by remember { mutableStateOf(true) }
         var isSigningIn by remember { mutableStateOf(false) }
         var showSuccessMessage by remember { mutableStateOf(false) }
-        var successUserName by remember { mutableStateOf("") }
         var firebaseIdToken by remember { mutableStateOf<String?>(null) }
 
         // Load current user from Firebase
@@ -177,8 +176,11 @@ fun ProfileScreen(
                                                 }
                                                 isSigningIn = true
                                                 scope.launch {
-                                                        // Timeout after 12 seconds - force success
-                                                        val signInResult = withTimeoutOrNull(12000L) {
+                                                        // First sign-in on emulator can be slow while
+                                                        // Google/Firebase warm up, so use a more
+                                                        // forgiving timeout and keep profile sync out
+                                                        // of the critical path.
+                                                        val signInResult = withTimeoutOrNull(30000L) {
                                                                 try {
                                                                         // Sign in with Google using
                                                                         // Firebase Auth
@@ -221,13 +223,18 @@ fun ProfileScreen(
                                                                                                                 firebaseUser
                                                                                                                         .uid
                                                                                                 )
-                                                                                        FirestoreManager
-                                                                                                .saveUser(
-                                                                                                        user
-                                                                                                )
                                                                                         currentUser = user
                                                                                         onUserChanged(user)
-                                                                                        successUserName = user.name
+                                                                                        scope.launch {
+                                                                                                FirebaseAuthManager
+                                                                                                        .syncSignedInUserProfile(
+                                                                                                                firebaseUser
+                                                                                                        )
+                                                                                                FirestoreManager
+                                                                                                        .saveUser(
+                                                                                                                user
+                                                                                                        )
+                                                                                        }
                                                                                         true
                                                                                 },
                                                                                 onFailure = { error ->
@@ -251,8 +258,14 @@ fun ProfileScreen(
                                                                 }
                                                         }
                                                         
-                                                        // If timeout occurred or success, show success and close
-                                                        if (signInResult == null || signInResult == true) {
+                                                        if (signInResult == null) {
+                                                                Toast.makeText(
+                                                                                context,
+                                                                                "Sign in timed out after 30 seconds. Please try again.",
+                                                                                Toast.LENGTH_LONG
+                                                                        )
+                                                                        .show()
+                                                        } else if (signInResult) {
                                                                 showSuccessMessage = true
                                                                 kotlinx.coroutines.delay(800)
                                                                 showSuccessMessage = false

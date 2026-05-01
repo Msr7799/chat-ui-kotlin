@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
 import com.example.chat_ui.R
@@ -68,12 +69,16 @@ fun GoogleSignInButton(
                         )
                         
                         val credential = result.credential
-                        if (credential is GoogleIdTokenCredential) {
-                            val idToken = credential.idToken
+                        if (credential is CustomCredential &&
+                            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                            val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
                             
                             // Sign in to Firebase with ID token
                             val signInResult = FirebaseAuthManager.signInWithGoogle(idToken)
                             signInResult.onSuccess { user ->
+                                scope.launch {
+                                    FirebaseAuthManager.syncSignedInUserProfile(user)
+                                }
                                 isLoading = false
                                 onSignInSuccess(user.email ?: "", user.displayName ?: "")
                             }.onFailure { error ->

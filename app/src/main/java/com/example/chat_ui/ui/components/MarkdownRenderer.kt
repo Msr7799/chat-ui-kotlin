@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -90,7 +91,7 @@ enum class BlockType {
  */
 fun parseMarkdownBlocks(content: String): List<MarkdownBlock> {
     val blocks = mutableListOf<MarkdownBlock>()
-    var remaining = content
+    var remaining = normalizeBlockquotedCodeFences(content)
     
     // Patterns for block detection
     val thinkOpenTag = "<think>"
@@ -291,6 +292,35 @@ fun parseMarkdownBlocks(content: String): List<MarkdownBlock> {
     return blocks
 }
 
+private fun normalizeBlockquotedCodeFences(content: String): String {
+    val lines = content.replace("\r\n", "\n").replace('\r', '\n').split("\n")
+    val normalized = mutableListOf<String>()
+    var insideQuotedCode = false
+
+    for (line in lines) {
+        val unquoted = line.removeBlockquotePrefix()
+        val isQuotedFence = line.trimStart().startsWith(">") && unquoted.trimStart().startsWith("```")
+
+        if (isQuotedFence) {
+            normalized.add(unquoted)
+            insideQuotedCode = !insideQuotedCode
+        } else if (insideQuotedCode && line.trimStart().startsWith(">")) {
+            normalized.add(unquoted)
+        } else {
+            normalized.add(line)
+        }
+    }
+
+    return normalized.joinToString("\n")
+}
+
+private fun String.removeBlockquotePrefix(): String {
+    val leadingSpaces = takeWhile { it == ' ' || it == '\t' }
+    val rest = drop(leadingSpaces.length)
+    if (!rest.startsWith(">")) return this
+    return leadingSpaces + rest.drop(1).removePrefix(" ")
+}
+
 /**
  * Check if code content is valid SVG
  */
@@ -372,12 +402,15 @@ fun MarkdownRenderer(
                     )
                 }
                 BlockType.CODE -> {
-                    CodeBlockRenderer(
-                        code = block.content,
-                        language = block.language,
-                        isClosed = block.isClosed,
-                        isLoading = isLoading && isLastBlock && !block.isClosed
-                    )
+                    val blockIsLoading = isLoading && isLastBlock && !block.isClosed
+                    if (block.content.isNotBlank() || blockIsLoading) {
+                        CodeBlockRenderer(
+                            code = block.content,
+                            language = block.language,
+                            isClosed = block.isClosed,
+                            isLoading = blockIsLoading
+                        )
+                    }
                 }
                 BlockType.MATH -> {
                     MathBlockRenderer(
@@ -424,17 +457,19 @@ fun MathBlockRenderer(
     content: String,
     isClosed: Boolean = true
 ) {
+    if (content.isBlank() && isClosed) return
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF1E293B))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = content,
-                color = Color(0xFF94A3B8),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp,
                 fontFamily = FontFamily.Monospace,
                 fontStyle = FontStyle.Italic,
@@ -478,70 +513,92 @@ fun TableRenderer(
         !row.all { cell -> cell.matches(Regex("^[-:]+$")) }
     }
     
-    // Scrollable table container
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF1E293B))
-            .horizontalScroll(rememberScrollState())
-    ) {
-        Column(
-            modifier = Modifier.padding(1.dp)
-        ) {
-            // Header row
-            Row(
-                modifier = Modifier
-                    .background(Color(0xFF334155))
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-            ) {
-                headerRow.forEach { cell ->
-                    Box(
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        if (maxWidth < 560.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                dataRows.forEach { row ->
+                    Column(
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = cell,
-                            color = Color(0xFFE2E8F0),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1
-                        )
+                        headerRow.forEachIndexed { index, header ->
+                            val value = row.getOrNull(index).orEmpty()
+                            if (header.isNotBlank() || value.isNotBlank()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = header,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.weight(0.38f)
+                                    )
+                                    Text(
+                                        text = value,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontSize = 13.sp,
+                                        lineHeight = 20.sp,
+                                        modifier = Modifier.weight(0.62f)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
-            
-            // Data rows
-            dataRows.forEach { row ->
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            ) {
                 Row(
                     modifier = Modifier
-                        .background(Color(0xFF1E293B))
-                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    row.forEach { cell ->
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp)
-                        ) {
+                    headerRow.forEach { cell ->
+                        Text(
+                            text = cell,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                dataRows.forEachIndexed { rowIndex, row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                if (rowIndex % 2 == 0) Color.Transparent
+                                else MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        headerRow.indices.forEach { index ->
                             Text(
-                                text = cell,
-                                color = Color(0xFF94A3B8),
-                                fontSize = 12.sp,
-                                maxLines = 2
+                                text = row.getOrNull(index).orEmpty(),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp,
+                                modifier = Modifier.weight(1f)
                             )
                         }
                     }
                 }
-                
-                // Divider between rows
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(Color(0xFF334155))
-                )
             }
         }
     }
@@ -897,6 +954,7 @@ fun CodeBlockRenderer(
     val context = LocalContext.current
     var copied by remember { mutableStateOf(false) }
     var showHtmlPreview by remember { mutableStateOf(false) }
+    val displayCode = remember(code) { trimBlankCodeEdges(code) }
     
     // Check if this is previewable HTML
     val isHtml = language.lowercase() in listOf("html", "htm", "xml", "svg")
@@ -965,7 +1023,7 @@ fun CodeBlockRenderer(
                 // Copy button
                 IconButton(
                     onClick = { 
-                        copyToClipboard(context, code)
+                        copyToClipboard(context, displayCode)
                         copied = true
                     },
                     modifier = Modifier.size(28.dp)
@@ -990,23 +1048,33 @@ fun CodeBlockRenderer(
             )
         }
         
-        // Code content with syntax highlighting - scrollable horizontally
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(12.dp)
-        ) {
-            Text(
-                text = highlightCode(code, language),
-                fontSize = 13.sp,
-                fontFamily = FontFamily.Monospace,
-                lineHeight = 20.sp,
-                softWrap = false, // Prevent text wrapping - allow horizontal scroll
-                maxLines = Int.MAX_VALUE
-            )
+        if (displayCode.isNotBlank()) {
+            // Code content with syntax highlighting - scrollable horizontally
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(12.dp)
+            ) {
+                Text(
+                    text = highlightCode(displayCode, language),
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                    lineHeight = 20.sp,
+                    softWrap = false, // Prevent text wrapping - allow horizontal scroll
+                    maxLines = Int.MAX_VALUE
+                )
+            }
         }
     }
+}
+
+private fun trimBlankCodeEdges(code: String): String {
+    val lines = code.replace("\r\n", "\n").replace('\r', '\n').split("\n")
+    val firstContent = lines.indexOfFirst { it.isNotBlank() }
+    if (firstContent == -1) return ""
+    val lastContent = lines.indexOfLast { it.isNotBlank() }
+    return lines.subList(firstContent, lastContent + 1).joinToString("\n")
 }
 
 /**
@@ -1552,14 +1620,14 @@ fun ToolCallBlock(
     var isExpanded by remember { mutableStateOf(!isClosed) }
     var wasClosed by remember { mutableStateOf(isClosed) }
     
-    // Parse tool name from content
+    // Parse tool/server details from content
     val toolName = remember(content) {
-        try {
-            val nameMatch = Regex(""""name"\s*:\s*"([^"]+)"""").find(content)
-            nameMatch?.groupValues?.get(1) ?: "Tool"
-        } catch (e: Exception) {
-            "Tool"
-        }
+        Regex("""(?im)^Tool:\s*(.+)$""").find(content)?.groupValues?.get(1)
+            ?: Regex(""""name"\s*:\s*"([^"]+)"""").find(content)?.groupValues?.get(1)
+            ?: "Tool"
+    }
+    val serverName = remember(content) {
+        Regex("""(?im)^MCP Server:\s*(.+)$""").find(content)?.groupValues?.get(1)
     }
     
     // Track isClosed transitions
@@ -1576,7 +1644,7 @@ fun ToolCallBlock(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1E3A5F).copy(alpha = 0.7f))
+            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
     ) {
         // Header - clickable to toggle
         Row(
@@ -1597,8 +1665,12 @@ fun ToolCallBlock(
                     fontSize = 16.sp
                 )
                 Text(
-                    text = if (isLoading) "جاري البحث..." else "بحث: $toolName",
-                    color = Color(0xFF93C5FD),
+                    text = if (isLoading) {
+                        "جاري استخدام الأداة..."
+                    } else {
+                        "تم استخدام MCP: ${serverName ?: toolName}"
+                    },
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -1609,7 +1681,7 @@ fun ToolCallBlock(
             Icon(
                 imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                 contentDescription = if (isExpanded) "Collapse" else "Expand",
-                tint = Color(0xFF93C5FD),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -1627,7 +1699,7 @@ fun ToolCallBlock(
             ) {
                 Text(
                     text = content,
-                    color = Color(0xFFBFDBFE),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace,
                     lineHeight = 18.sp
@@ -1643,7 +1715,7 @@ fun ToolCallBlock(
         ) {
             Text(
                 text = content.take(100) + if (content.length > 100) "..." else "",
-                color = Color(0xFF6B8CAE),
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f),
                 fontSize = 11.sp,
                 maxLines = 2,
                 lineHeight = 16.sp,
@@ -1684,7 +1756,7 @@ fun SearchResultsBlock(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1A3D2E).copy(alpha = 0.7f))
+            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f))
     ) {
         // Header - clickable to toggle
         Row(
@@ -1705,8 +1777,8 @@ fun SearchResultsBlock(
                     fontSize = 16.sp
                 )
                 Text(
-                    text = if (isLoading) "جاري تحميل النتائج..." else "نتائج البحث",
-                    color = Color(0xFF86EFAC),
+                    text = if (isLoading) "جاري تحميل النتائج..." else "مخرجات الأداة",
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -1717,7 +1789,7 @@ fun SearchResultsBlock(
             Icon(
                 imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                 contentDescription = if (isExpanded) "Collapse" else "Expand",
-                tint = Color(0xFF86EFAC),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -1736,7 +1808,7 @@ fun SearchResultsBlock(
             ) {
                 Text(
                     text = content,
-                    color = Color(0xFFBBF7D0),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
                     lineHeight = 16.sp
@@ -1752,7 +1824,7 @@ fun SearchResultsBlock(
         ) {
             Text(
                 text = "اضغط لعرض ${content.lines().size} سطر من النتائج",
-                color = Color(0xFF4ADE80),
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f),
                 fontSize = 11.sp,
                 modifier = Modifier
                     .fillMaxWidth()

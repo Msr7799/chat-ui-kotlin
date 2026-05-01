@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.NoCredentialException
+import com.example.chat_ui.R
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseUser
@@ -17,10 +19,20 @@ import kotlinx.coroutines.withContext
 object FirebaseAuthManager {
     private const val TAG = "FirebaseAuthManager"
 
-    // Google OAuth Client ID from Firebase Console (Web client type - NOT Android!)
-    // استخدم Web client ID من google-services.json (client_type: 3)
-    private const val WEB_CLIENT_ID =
-            "347302193342-76uos74qsu6jove9v9kkhb7hnupsmggb.apps.googleusercontent.com"
+    private fun toUserFacingAuthException(error: Throwable): Exception {
+        val message = error.message.orEmpty()
+        return when {
+            error is NoCredentialException ->
+                Exception(
+                    "No Google credential was returned. Add a Google account to the emulator or choose a different account and try again."
+                )
+            message.contains("Requests from this Android client application", ignoreCase = true) ->
+                Exception(
+                    "Firebase blocked requests from this Android app. Check Firebase/Google Cloud API key restrictions and confirm the Android app package name plus SHA-1/SHA-256 fingerprints are allowed."
+                )
+            else -> Exception(message.ifBlank { "Google Sign-In failed" }, error)
+        }
+    }
 
     /**
      * Sign in with Google using Credential Manager This shows the Google account picker and signs
@@ -29,14 +41,16 @@ object FirebaseAuthManager {
     suspend fun signInWithGoogleOneTap(context: Context): Result<FirebaseUser> =
             withContext(Dispatchers.Main) {
                 try {
-                    Log.d(TAG, "Starting Google Sign-In with Web Client ID: $WEB_CLIENT_ID")
+                    val webClientId = context.getString(R.string.default_web_client_id)
+
+                    Log.d(TAG, "Starting Google Sign-In with Web Client ID: $webClientId")
                     val credentialManager = CredentialManager.create(context)
 
                     // Configure Google Sign-In options
                     val googleIdOption =
                             GetGoogleIdOption.Builder()
                                     .setFilterByAuthorizedAccounts(false)
-                                    .setServerClientId(WEB_CLIENT_ID)
+                                    .setServerClientId(webClientId)
                                     .setAutoSelectEnabled(false)
                                     .build()
 
@@ -70,7 +84,7 @@ object FirebaseAuthManager {
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Google Sign-In failed: ${e.message}", e)
-                    Result.failure(e)
+                    Result.failure(toUserFacingAuthException(e))
                 }
             }
 
@@ -83,21 +97,39 @@ object FirebaseAuthManager {
 
             if (user != null) {
                 Log.i(TAG, "Google Sign-In successful: ${user.email}")
-
-                // Save user to Realtime Database
-                FirebaseDatabaseManager.saveUserProfile(
-                        userId = user.uid,
-                        email = user.email ?: "",
-                        name = user.displayName ?: "",
-                        photoUrl = user.photoUrl?.toString()
-                )
-
                 Result.success(user)
             } else {
                 Result.failure(Exception("Sign in failed: No user returned"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Google Sign-In failed: ${e.message}", e)
+            Result.failure(toUserFacingAuthException(e))
+        }
+    }
+
+    /**
+     * Sync the signed-in user profile to Firebase databases.
+     *
+     * This is intentionally separate from the auth step so slow first-time writes
+     * do not make the UI think sign-in itself failed.
+     */
+    suspend fun syncSignedInUserProfile(user: FirebaseUser): Result<Unit> {
+        return try {
+            val saved =
+                    FirebaseDatabaseManager.saveUserProfile(
+                            userId = user.uid,
+                            email = user.email ?: "",
+                            name = user.displayName ?: "",
+                            photoUrl = user.photoUrl?.toString()
+                    )
+
+            if (saved) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to save user profile"))
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "User profile sync failed: ${e.message}", e)
             Result.failure(e)
         }
     }

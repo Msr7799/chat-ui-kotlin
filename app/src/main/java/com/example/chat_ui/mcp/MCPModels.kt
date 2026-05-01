@@ -59,6 +59,15 @@ data class MCPToolResult(
     val toolName: String = ""
 )
 
+data class MCPToolExecutionTrace(
+    val toolName: String,
+    val serverId: String,
+    val serverName: String,
+    val input: Map<String, JsonElement>,
+    val result: MCPToolResult,
+    val durationMs: Long
+)
+
 /**
  * MCP Server Connection State
  */

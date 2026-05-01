@@ -133,15 +133,15 @@ dependencies {
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)
     
-    // Cloudinary
-    implementation(libs.cloudinary.android)
+    // Cloudinary core is enough for MediaManager uploads and avoids pulling Fresco/download UI modules.
+    implementation(libs.cloudinary.android.core)
 
     // OkHttp SSE for streaming EventSource support
     implementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
     
     // AndroidSVG for SVG rendering
     implementation("com.caverock:androidsvg-aar:1.4")
-    
+
     // Google Sign-In (Credential Manager)
     implementation(libs.google.credentials)
     implementation(libs.google.id.identity)

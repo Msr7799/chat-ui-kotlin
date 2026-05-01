@@ -82,6 +82,9 @@ class ImageGenerationViewModel : ViewModel() {
         val prompt: String,
         val model: String,
         val timestamp: Long = System.currentTimeMillis(),
+        val cloudinaryUrl: String? = null,
+        val cloudinaryPublicId: String? = null,
+        val firestoreId: String? = null,
         val width: Int? = null,
         val height: Int? = null
     )
@@ -177,14 +180,22 @@ class ImageGenerationViewModel : ViewModel() {
                     referenceImageMimeType = referenceImageMimeType
                 )
                 
-                when (val result = imageGenClient.generateImage(selectedModel, request)) {
+                when (val result = imageGenClient.generateImage(
+                    model = selectedModel,
+                    request = request,
+                    context = context,
+                    saveToGallery = saveToFirestore
+                )) {
                     is ImageGenerationApiClient.ImageGenResult.Success -> {
                         val newImages = result.images.map { img ->
                             GeneratedImageData(
-                                base64Data = img.base64Data,
+                                base64Data = if (img.cloudinaryUrl.isNullOrBlank()) img.base64Data else "",
                                 mimeType = img.mimeType,
                                 prompt = prompt,
                                 model = selectedModel,
+                                cloudinaryUrl = img.cloudinaryUrl,
+                                cloudinaryPublicId = img.cloudinaryPublicId,
+                                firestoreId = img.firestoreId,
                                 width = img.width,
                                 height = img.height
                             )
@@ -192,39 +203,20 @@ class ImageGenerationViewModel : ViewModel() {
                         
                         generatedImages = newImages
                         
-                        // Save to Cloudinary/Firestore if requested - REMOVED (Backend cancelled)
-                        /*
-                        if (saveToFirestore && context != null && newImages.isNotEmpty()) {
-                            newImages.forEach { imageData ->
-                                try {
-                                    imageGenClient.saveImageToCloudinaryAndFirestore(
-                                        context = context,
-                                        base64Data = imageData.base64Data,
-                                        prompt = imageData.prompt,
-                                        modelId = imageData.model
-                                    )
-                                } catch (e: Exception) {
-                                    // Log but don't fail the whole operation
-                                    android.util.Log.e("ImageGenViewModel", "Failed to save image", e)
-                                }
-                            }
-                        }
-                        */
-                        
                         // Add to history
-                        generationHistory = listOf(
+                        generationHistory = (listOf(
                             GenerationHistoryItem(
                                 prompt = prompt,
                                 model = selectedModel,
                                 images = newImages
                             )
-                        ) + generationHistory
+                        ) + generationHistory).take(5)
                         
 
                         
                         // Save prompt to history
                         if (context != null) {
-                            // PromptPreferences.addImageHistory(context, prompt)
+                            PromptPreferences.addToImageHistory(context, prompt)
                         }
 
                         errorMessage = null

@@ -18,8 +18,8 @@ import kotlin.coroutines.suspendCoroutine
 /**
  * Backend Chat multi-model tester for your Cloud Run backend.
  *
- * - Fetch models: GET /v1/chat/models
- * - Chat completion: POST /v1/chat/completions (OpenAI-compatible)
+ * - Fetch models: GET /v1/models
+ * - Chat completion: POST /v1/chat
  *
  * Requires Firebase ID Token:
  * Authorization: Bearer <Firebase ID Token>
@@ -39,7 +39,7 @@ class BackendChatMultiModelTester(
 
     suspend fun fetchModelIds(): List<String> {
         val token = tokenProvider()
-        val url = "${baseUrl.trimEnd('/')}/v1/chat/models"
+        val url = endpoint("/models")
 
         val req = Request.Builder()
             .url(url)
@@ -63,7 +63,7 @@ class BackendChatMultiModelTester(
 
     suspend fun chatOnce(modelId: String, userText: String): String {
         val token = tokenProvider()
-        val url = "${baseUrl.trimEnd('/')}/v1/chat/completions"
+        val url = endpoint("/chat")
 
         val payload = JSONObject().apply {
             put("model", modelId)
@@ -123,6 +123,11 @@ class BackendChatMultiModelTester(
             }
             text
         }
+    }
+
+    private fun endpoint(path: String): String {
+        val root = baseUrl.trimEnd('/')
+        return if (root.endsWith("/v1")) "$root$path" else "$root/v1$path"
     }
 }
 

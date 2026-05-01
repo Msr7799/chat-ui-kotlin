@@ -69,7 +69,7 @@ mcp-kotlin-sdk = { group = "io.modelcontextprotocol", name = "kotlin-sdk", versi
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 
 # Cloudinary
-cloudinary-android = { group = "com.cloudinary", name = "cloudinary-android", version.ref = "cloudinary" }
+cloudinary-android-core = { group = "com.cloudinary", name = "cloudinary-android-core", version.ref = "cloudinary" }
 
 # Google Sign-In (Credential Manager)
 google-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "googleCredentials" }
@@ -85,4 +85,3 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 realm-kotlin = { id = "io.realm.kotlin", version.ref = "mongodbRealm" }
-

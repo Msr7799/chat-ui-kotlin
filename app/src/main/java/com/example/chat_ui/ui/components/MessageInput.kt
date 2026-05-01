@@ -141,7 +141,7 @@ fun MessageInput(
                 modifier =
                         Modifier.fillMaxWidth()
                                 .background(themeColors.surface)
-                                .padding(horizontal = 16.dp, vertical = 16.dp)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
                 // Pending Files Preview Row (MessageFile for multimodal API)
                 if (pendingFiles.isNotEmpty()) {

@@ -31,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.chat_ui.data.Message
 import com.example.chat_ui.data.firebase.FirebaseManager
 import com.example.chat_ui.data.firebase.FirestoreManager
 import com.example.chat_ui.data.models.User
@@ -56,6 +57,35 @@ import com.example.chat_ui.viewmodel.ChatViewModel
 import java.io.File
 import kotlinx.coroutines.launch
 
+private val DebugAdminEmails = setOf(
+        "bibf101academic@gmail.com",
+        "mmalromaihi99@gmail.com",
+        "alromaihi2224@gmail.com"
+)
+
+private fun isDebugAdmin(email: String?): Boolean {
+    // حماية مهمة: لا نفتح أدوات الاختبار إلا لحسابات الأدمن المحددة.
+    return email?.trim()?.lowercase() in DebugAdminEmails
+}
+
+private fun buildConversationShareText(
+        title: String?,
+        model: String?,
+        messages: List<Message>
+): String {
+    return buildString {
+        appendLine(title?.takeIf { it.isNotBlank() } ?: "ChatUI Conversation")
+        model?.takeIf { it.isNotBlank() }?.let { appendLine("Model: $it") }
+        appendLine()
+        messages.forEach { msg ->
+            val sender = if (msg.isUser) "You" else "AI"
+            appendLine("$sender:")
+            appendLine(msg.getDisplayContent())
+            appendLine()
+        }
+    }.trim()
+}
+
 @Composable
 fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) {
     val navController = rememberNavController()
@@ -78,15 +108,19 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
     // Image generation dialog state
     var showImageGenDialog by remember { mutableStateOf(false) }
     var imageGenPrompt by remember { mutableStateOf("") }
+    val debugEmail = currentUser?.email ?: FirebaseManager.getCurrentUserEmail()
+    val isDebugAdmin = isDebugAdmin(debugEmail)
 
-    // Handle optional deep-link route (e.g., from GenerateVideo screen configuration prompt)
-    LaunchedEffect(startRoute) {
-        if (!startRoute.isNullOrBlank()) {
-            try {
-                navController.navigate(startRoute)
-            } catch (e: Exception) {
-                android.util.Log.w("ChatApp", "Failed to navigate to startRoute=$startRoute", e)
-            }
+    val initialRoute = remember(startRoute) {
+        when (startRoute) {
+            NavRoutes.ImageGallery.route,
+            NavRoutes.Gallery.route,
+            NavRoutes.Settings.route,
+            NavRoutes.Models.route,
+            NavRoutes.Profile.route,
+            NavRoutes.MCPSettings.route,
+            NavRoutes.Debug.route -> startRoute
+            else -> NavRoutes.Chat.route
         }
     }
 
@@ -112,8 +146,11 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
                     cursor?.use {
                         if (it.moveToFirst()) {
                             val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            val sizeIndex = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
                             val fileName = if (nameIndex >= 0) it.getString(nameIndex) else "image.jpg"
+                            val fileSize = if (sizeIndex >= 0) it.getLong(sizeIndex) else -1L
                             val mimeType = context.contentResolver.getType(selectedUri) ?: "image/jpeg"
+                            android.util.Log.i("ChatApp", "Picked chat image: name=$fileName, mime=$mimeType, sizeBytes=$fileSize, uri=$selectedUri")
                             viewModel.addImageFromUri(context, selectedUri, fileName, mimeType)
                         }
                     }
@@ -128,8 +165,11 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
                     cursor?.use {
                         if (it.moveToFirst()) {
                             val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            val sizeIndex = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
                             val fileName = if (nameIndex >= 0) it.getString(nameIndex) else "file"
+                            val fileSize = if (sizeIndex >= 0) it.getLong(sizeIndex) else -1L
                             val mimeType = context.contentResolver.getType(selectedUri) ?: "application/octet-stream"
+                            android.util.Log.i("ChatApp", "Picked chat file: name=$fileName, mime=$mimeType, sizeBytes=$fileSize, uri=$selectedUri")
                             
                             // Use appropriate method based on file type
                             if (mimeType.startsWith("image/")) {
@@ -185,7 +225,7 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
 
     NavHost(
             navController = navController,
-            startDestination = NavRoutes.Chat.route,
+            startDestination = initialRoute,
             enterTransition = {
                 slideIntoContainer(
                         towards = AnimatedContentTransitionScope.SlideDirection.Left,
@@ -286,30 +326,36 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
                             isLoading = isLoading,
                             attachments = attachments,
                             isUploadingAttachment = isUploadingAttachment,
-                            onMenuClick = { scope.launch { drawerState.open() } },
+                            onMenuClick = {
+                                    viewModel.startRealtimeSync()
+                                    scope.launch { drawerState.open() }
+                                },
                             onSendMessage = { messageText -> 
                                 // Auto-detect image generation requests
-                                val imageKeywords = listOf(
-                                    // All forms of أنشئ with different hamza positions
+                                val imageGenerationVerbs = listOf(
                                     "انشئ", "أنشئ", "أنشأ", "انشأ", "انشا", "أنشا",
-                                    "صور", "صوره", "صورة",
                                     "ارسم", "إرسم",
                                     "صمم", 
                                     "اعمل", "أعمل", "اعملي",
                                     "generate", "create", "draw", "make", "design",
-                                    "image", "picture", "photo"
+                                    "توليد", "ولد"
                                 )
+                                val analysisVerbs = listOf("حلل", "تحلل", "تحليل", "اشرح", "صف", "اقرأ", "read", "analyze", "describe", "explain")
                                 
-                                // Check if message contains image generation keywords
                                 val normalizedText = messageText.replace("ة", "ه").replace("أ", "ا").replace("إ", "ا").replace("ئ", "ا")
-                                val hasImageKeyword = imageKeywords.any { keyword ->
+                                val hasGenerationVerb = imageGenerationVerbs.any { keyword ->
+                                    normalizedText.contains(keyword.replace("ة", "ه").replace("أ", "ا").replace("إ", "ا").replace("ئ", "ا"), ignoreCase = true)
+                                }
+                                val hasAnalysisVerb = analysisVerbs.any { keyword ->
                                     normalizedText.contains(keyword.replace("ة", "ه").replace("أ", "ا").replace("إ", "ا").replace("ئ", "ا"), ignoreCase = true)
                                 }
                                 
                                 val hasImageWord = normalizedText.contains("صور", ignoreCase = true) || 
+                                                   normalizedText.contains("صوره", ignoreCase = true) ||
                                                    normalizedText.contains("image", ignoreCase = true)
+                                val hasPendingFiles = viewModel.pendingFiles.isNotEmpty() || attachments.isNotEmpty()
                                 
-                                if (hasImageKeyword && hasImageWord) {
+                                if (!hasPendingFiles && hasGenerationVerb && hasImageWord && !hasAnalysisVerb) {
                                     android.util.Log.d("ChatApp", "Image generation detected for: $messageText")
                                     viewModel.generateImageInChat(
                                         prompt = messageText,
@@ -317,6 +363,9 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
                                         saveToGallery = true
                                     )
                                 } else {
+                                    if (hasPendingFiles) {
+                                        android.util.Log.i("ChatApp", "Sending chat with attachments for analysis, not image generation. pendingFiles=${viewModel.pendingFiles.size}, attachments=${attachments.size}")
+                                    }
                                     viewModel.sendMessage(messageText, context)
                                 }
                             },
@@ -383,8 +432,8 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
                                 // Add file from URL to pending files
                                 viewModel.addPendingFile(file)
                             },
-                            onRegenerate = {
-                                viewModel.regenerateLastMessage()
+                            onRegenerate = { updatedPrompt ->
+                                viewModel.regenerateLastMessage(updatedPrompt)
                             },
                             onStopGeneration = {
                                 viewModel.stopGeneration()
@@ -392,26 +441,29 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
                             onGenerateImage = {
                                 showImageGenDialog = true
                             },
+                            mcpToolsEnabled = viewModel.mcpToolsEnabled,
+                            onToggleMCPTools = {
+                                viewModel.toggleMCPTools()
+                            },
                             onShareClick = {
-                                // Share conversation
-                                if (currentConversation != null && messages.isNotEmpty()) {
-                                    val conv = currentConversation
-                                    val shareText = buildString {
-                                        appendLine("📱 ${conv.title}")
-                                        appendLine("─".repeat(30))
-                                        messages.forEach { msg ->
-                                            val sender = if (msg.isUser) "👤 You" else "🤖 AI"
-                                            appendLine("\n$sender:")
-                                            appendLine(msg.content)
-                                        }
-                                    }
-                                    val sendIntent = Intent(Intent.ACTION_SEND)
-                                    sendIntent.putExtra(Intent.EXTRA_TEXT, shareText)
-                                    sendIntent.setType("text/plain")
-                                    sendIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                if (messages.isNotEmpty()) {
+                                    val shareText =
+                                            buildConversationShareText(
+                                                    title = currentConversation?.title,
+                                                    model = currentConversation?.model ?: selectedModelId,
+                                                    messages = messages
+                                            )
+                                    val sendIntent =
+                                            Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(Intent.EXTRA_SUBJECT, "ChatUI Conversation")
+                                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                            }
                                     val shareIntent =
-                                            Intent.createChooser(sendIntent, "Share Conversation")
-                                    shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            Intent.createChooser(sendIntent, "Share conversation")
+                                    if (context !is Activity) {
+                                        shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
                                     context.startActivity(shareIntent)
                                 } else {
                                     android.widget.Toast.makeText(
@@ -433,7 +485,19 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
                     onProfileClick = { navController.navigate(NavRoutes.Profile.route) },
                     onApiSettingsClick = { navController.navigate(NavRoutes.ApiSettings.route) },
                     onMCPSettingsClick = { navController.navigate(NavRoutes.MCPSettings.route) },
-                    onDebugClick = { navController.navigate(NavRoutes.Debug.route) },
+                    showDebugConsole = isDebugAdmin,
+                    onDebugClick = {
+                        if (isDebugAdmin) {
+                            navController.navigate(NavRoutes.Debug.route)
+                        } else {
+                            // حماية إضافية في الواجهة: لا نكشف الديباق لغير الأدمن.
+                            android.widget.Toast.makeText(
+                                    context,
+                                    "Debug Console متاح للأدمن فقط",
+                                    android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    },
                     onGoogleGeminiSettingsClick = { navController.navigate(NavRoutes.GoogleGeminiSettings.route) }
             )
         }
@@ -455,6 +519,7 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
 
         // Models Screen
         composable(NavRoutes.Models.route) {
+            LaunchedEffect(Unit) { viewModel.fetchModels() }
             ModelsScreen(
                     onBackClick = { navController.popBackStack() },
                     onModelSelect = { model ->
@@ -545,9 +610,24 @@ fun ChatApp(startRoute: String? = null, viewModel: ChatViewModel = viewModel()) 
         
         // Debug Screen
         composable(NavRoutes.Debug.route) {
-            DebugScreen(
-                onBack = { navController.popBackStack() }
-            )
+            if (isDebugAdmin) {
+                DebugScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            } else {
+                LaunchedEffect(Unit) {
+                    // حماية الراوت نفسه حتى لو تم فتحه مباشرة.
+                    android.widget.Toast.makeText(
+                            context,
+                            "Debug Console متاح للأدمن فقط",
+                            android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    navController.navigate(NavRoutes.Chat.route) {
+                        popUpTo(NavRoutes.Debug.route) { inclusive = true }
+                    }
+                }
+                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+            }
         }
     }
     

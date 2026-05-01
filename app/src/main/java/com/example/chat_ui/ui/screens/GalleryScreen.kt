@@ -26,6 +26,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.request.CachePolicy
+import coil.size.Precision
+import com.example.chat_ui.utils.CloudinaryUrlUtils
 import com.example.chat_ui.R
 import com.example.chat_ui.ui.components.DotsLoader
 import com.example.chat_ui.api.ImageGenerationClient
@@ -236,8 +239,14 @@ private fun ImageCard(
                 AsyncImage(
                         model =
                                 ImageRequest.Builder(LocalContext.current)
-                                        .data(image.cloudinaryUrl)
-                                        .crossfade(true)
+                                        .data(CloudinaryUrlUtils.galleryThumbnailUrl(image.cloudinaryUrl))
+                                        .size(360, 360)
+                                        .precision(Precision.INEXACT)
+                                        .memoryCachePolicy(CachePolicy.ENABLED)
+                                        .diskCachePolicy(CachePolicy.ENABLED)
+                                        .allowHardware(true)
+                                        .allowRgb565(true)
+                                        .crossfade(false)
                                         .build(),
                         contentDescription = image.prompt,
                         contentScale = ContentScale.Crop,
@@ -334,7 +343,16 @@ private fun ImageFullscreenDialog(image: GeneratedImage, onDismiss: () -> Unit) 
             ) {
                 // Image
                 AsyncImage(
-                        model = image.cloudinaryUrl,
+                        model = ImageRequest.Builder(LocalContext.current)
+                                .data(CloudinaryUrlUtils.previewUrl(image.cloudinaryUrl))
+                                .size(1200, 1200)
+                                .precision(Precision.INEXACT)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .allowHardware(true)
+                                .allowRgb565(true)
+                                .crossfade(false)
+                                .build(),
                         contentDescription = image.prompt,
                         contentScale = ContentScale.Fit,
                         modifier =

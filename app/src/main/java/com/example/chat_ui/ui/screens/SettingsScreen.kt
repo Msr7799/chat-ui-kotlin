@@ -72,6 +72,8 @@ import com.example.chat_ui.R
 import com.example.chat_ui.ui.theme.LanguageManager
 import com.example.chat_ui.ui.theme.ThemeManager
 import com.example.chat_ui.ui.theme.ThemePreference
+import com.example.chat_ui.ui.theme.DarkBackground
+import com.example.chat_ui.ui.theme.LightBackground
 import com.example.chat_ui.ui.theme.selectedColor
 import kotlinx.coroutines.launch
 
@@ -84,6 +86,7 @@ fun SettingsScreen(
         onApiSettingsClick: () -> Unit = {},
         onMCPSettingsClick: () -> Unit = {},
         onDebugClick: () -> Unit = {},
+        showDebugConsole: Boolean = false,
         onGoogleGeminiSettingsClick: () -> Unit = {}
 ) {
         // Theme is controlled by ThemeManager, not this local state
@@ -312,12 +315,14 @@ fun SettingsScreen(
                                         subtitle = "إدارة خوادم Model Context Protocol",
                                         onClick = onMCPSettingsClick
                                 )
-                                SettingsItem(
-                                        icon = Icons.Default.BugReport,
-                                        title = "Debug Console",
-                                        subtitle = "اختبار النماذج والـ Backend",
-                                        onClick = onDebugClick
-                                )
+                                if (showDebugConsole) {
+                                        SettingsItem(
+                                                icon = Icons.Default.BugReport,
+                                                title = "Debug Console",
+                                                subtitle = "اختبار النماذج والـ Backend",
+                                                onClick = onDebugClick
+                                        )
+                                }
                         }
 
                         // Appearance Section
@@ -418,22 +423,26 @@ fun SettingsScreen(
 private fun SettingsSection(title: String, content: @Composable () -> Unit) {
         val colorScheme = MaterialTheme.colorScheme
         Column {
-                Text(
-                        text = title,
-                        color = if (ThemeManager.isDarkMode) colorScheme.onSurfaceVariant else colorScheme.primary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+	                Text(
+	                        text = title,
+	                        color = if (ThemeManager.isDarkMode) {
+	                                colorScheme.onBackground
+	                        } else {
+	                                colorScheme.primary
+	                        },
+	                        fontSize = 12.sp,
+	                        fontWeight = FontWeight.SemiBold,
+	                        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
                 )
 
-                Column(
-                        modifier =
-                                Modifier.fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(colorScheme.surfaceVariant)
-                ) { content() }
-        }
-}
+	                Column(
+	                        modifier =
+	                                Modifier.fillMaxWidth()
+	                                        .clip(RoundedCornerShape(12.dp))
+	                                        .background(colorScheme.surfaceVariant)
+	                ) { content() }
+	        }
+	}
 
 @Composable
 private fun SettingsItem(
@@ -480,17 +489,21 @@ private fun SettingsItem(
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium
                         )
-                        if (subtitle != null) {
-                                Text(text = subtitle, color = colorScheme.outline, fontSize = 13.sp)
-                        }
+	                        if (subtitle != null) {
+	                                Text(
+	                                        text = subtitle,
+	                                        color = colorScheme.onSurfaceVariant,
+	                                        fontSize = 13.sp
+	                                )
+	                        }
                 }
 
                 Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = null,
-                        tint = colorScheme.outline,
-                        modifier = Modifier.size(20.dp)
-                )
+	                        tint = colorScheme.onSurfaceVariant,
+	                        modifier = Modifier.size(20.dp)
+	                )
         }
 }
 
@@ -534,9 +547,13 @@ private fun SettingsToggleItem(
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium
                         )
-                        if (subtitle != null) {
-                                Text(text = subtitle, color = colorScheme.outline, fontSize = 13.sp)
-                        }
+	                        if (subtitle != null) {
+	                                Text(
+	                                        text = subtitle,
+	                                        color = colorScheme.onSurfaceVariant,
+	                                        fontSize = 13.sp
+	                                )
+	                        }
                 }
 
                 Switch(
@@ -605,14 +622,14 @@ private fun ThemeSelectorItem() {
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                         ThemeOption(
-                                color = Color(0xFFF9FAFB),
+                                color = LightBackground,
                                 label = "Light",
                                 isSelected = currentTheme == ThemePreference.LIGHT,
                                 onClick = { ThemeManager.setTheme(ThemePreference.LIGHT) },
                                 modifier = Modifier.weight(1f)
                         )
                         ThemeOption(
-                                color = Color(0xFF0D0F12),
+                                color = DarkBackground,
                                 label = "Dark",
                                 isSelected = currentTheme == ThemePreference.DARK,
                                 onClick = { ThemeManager.setTheme(ThemePreference.DARK) },

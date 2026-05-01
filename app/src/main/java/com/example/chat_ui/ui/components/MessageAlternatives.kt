@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -20,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,7 +42,6 @@ fun MessageAlternatives(
     totalCount: Int,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
-    onRegenerate: () -> Unit,
     isLoading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -100,31 +97,6 @@ fun MessageAlternatives(
                 else 
                     themeColors.textMuted.copy(alpha = 0.4f),
                 modifier = Modifier.size(18.dp)
-            )
-        }
-        
-        // Divider
-        Box(
-            modifier = Modifier
-                .width(1.dp)
-                .height(16.dp)
-                .background(themeColors.border)
-        )
-        
-        // Regenerate button
-        IconButton(
-            onClick = onRegenerate,
-            enabled = !isLoading,
-            modifier = Modifier.size(28.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Refresh,
-                contentDescription = "Regenerate response",
-                tint = if (!isLoading) 
-                    themeColors.textSecondary 
-                else 
-                    themeColors.textMuted.copy(alpha = 0.4f),
-                modifier = Modifier.size(16.dp)
             )
         }
     }

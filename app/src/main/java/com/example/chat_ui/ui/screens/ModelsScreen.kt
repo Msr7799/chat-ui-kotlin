@@ -380,7 +380,6 @@ fun ModelsScreen(
 @Composable
 private fun SectionHeader(title: String) {
     val colorScheme = MaterialTheme.colorScheme
-    val isDark = isSystemInDarkTheme()
     
     Row(
         modifier = Modifier
@@ -392,7 +391,7 @@ private fun SectionHeader(title: String) {
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = if (isDark) Color.White else Color.Black
+            color = colorScheme.onBackground
         )
         Spacer(modifier = Modifier.width(8.dp))
         Box(

@@ -125,12 +125,23 @@ object ChatStreamingClient {
         
         // For Google AI Studio API, use direct generativelanguage.googleapis.com endpoint
         if (providerConfig.provider == ApiProvider.GOOGLE_AI_STUDIO) {
-            Log.i(TAG, "Using Google AI Studio Direct API")
+            Log.i(TAG, "Using Google AI Studio API")
             
-            // Google AI Studio uses API key in query parameter
+            val usesBackendGoogle = providerConfig.baseUrl.contains("/v1/google")
             val apiKey = providerConfig.apiKey
-            if (apiKey.isBlank()) {
+            val firebaseToken = if (usesBackendGoogle) {
+                async(Dispatchers.IO) {
+                    FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+                }.await()
+            } else null
+
+            if (!usesBackendGoogle && apiKey.isBlank()) {
                 trySend(StreamEvent.Error("Google AI Studio API Key is required"))
+                close()
+                return@callbackFlow
+            }
+            if (usesBackendGoogle && firebaseToken == null) {
+                trySend(StreamEvent.Error("Please sign in before using Google Studio"))
                 close()
                 return@callbackFlow
             }
@@ -152,7 +163,11 @@ object ChatStreamingClient {
 
             val supportsThinkingAndMediaConfig = modelId.startsWith("gemini-3") && isBetaOrAlphaApi
             
-            val url = "${providerConfig.baseUrl}/models/$modelId:streamGenerateContent?key=$apiKey"
+            val url = if (usesBackendGoogle) {
+                "${providerConfig.baseUrl}/models/$modelId:streamGenerateContent"
+            } else {
+                "${providerConfig.baseUrl}/models/$modelId:streamGenerateContent?key=$apiKey"
+            }
             
             // Build request body (Gemini API format: role + parts)
             val requestBody = buildJsonObject {
@@ -214,6 +229,11 @@ object ChatStreamingClient {
             val request = Request.Builder()
                 .url(url)
                 .post(requestBody.toRequestBody("application/json".toMediaType()))
+                .apply {
+                    if (firebaseToken != null) {
+                        addHeader("Authorization", "Bearer $firebaseToken")
+                    }
+                }
                 .build()
             
             // Use async enqueue to avoid NetworkOnMainThreadException
@@ -358,13 +378,29 @@ object ChatStreamingClient {
                 }
                 token
             }
-            AuthMethod.API_KEY -> providerConfig.apiKey
+            AuthMethod.API_KEY -> {
+                if (providerConfig.provider == ApiProvider.HUGGINGFACE) {
+                    // أمان: Hugging Face يمر عبر الباك إند، لذلك نرسل Firebase ID Token وليس HF_API_KEY.
+                    val token = async(Dispatchers.IO) {
+                        FirebaseAuthHelper.getFirebaseIdToken(forceRefresh = false)
+                    }.await()
+                    if (token == null) {
+                        trySend(StreamEvent.Error("Please sign in before sending chat requests"))
+                        close()
+                        return@callbackFlow
+                    }
+                    token
+                } else {
+                    providerConfig.apiKey
+                }
+            }
         }
         
         // Prepare messages with files asynchronously (non-blocking)
         val preparedMessages = async(Dispatchers.IO) {
             MessagePreparer.prepareMessagesWithFiles(messages, isMultimodal, imageProcessorOptions)
         }.await()
+        logAttachmentRequestSummary(messages, preparedMessages, modelId = model, isMultimodal = isMultimodal)
         
         // Add system prompt with tools description for prompt-based tool calling
         val messagesWithSystem = if (tools != null && tools.isNotEmpty()) {
@@ -402,8 +438,14 @@ object ChatStreamingClient {
         }.toString()
         
         // Build request with provider-specific configuration
+        val chatUrl = if (providerConfig.provider == ApiProvider.HUGGINGFACE) {
+            "${providerConfig.baseUrl.trimEnd('/')}/chat/stream"
+        } else {
+            providerConfig.getChatCompletionsUrl()
+        }
+
         val requestBuilder = Request.Builder()
-            .url(providerConfig.getChatCompletionsUrl())
+            .url(chatUrl)
             .post(requestBody.toRequestBody("application/json".toMediaType()))
         
         // Add headers with fresh access token
@@ -418,7 +460,6 @@ object ChatStreamingClient {
         val request = requestBuilder.build()
         
         Log.d(TAG, "Request URL: ${request.url}")
-        Log.d(TAG, "Request Headers: ${request.headers}")
         
         var fullText = ""
         
@@ -607,5 +648,49 @@ object ChatStreamingClient {
             appendLine("""{"name": "web_search", "arguments": {"query": "weather today"}}""")
             appendLine("</tool_call>")
         }
+    }
+
+    private fun logAttachmentRequestSummary(
+        messages: List<MessagePreparer.ChatMessage>,
+        preparedMessages: JsonArray,
+        modelId: String,
+        isMultimodal: Boolean
+    ) {
+        val files = messages.flatMap { it.files }
+        if (files.isEmpty()) {
+            Log.i(TAG, "Chat request has no files. model=$modelId")
+            return
+        }
+
+        files.forEach { file ->
+            Log.i(
+                TAG,
+                "Chat request file: name=${file.name}, mime=${file.mime}, image=${file.isImage()}, pdf=${file.isPdf()}, base64Chars=${file.value.length}, extractedTextChars=${file.extractedText?.length ?: 0}"
+            )
+        }
+
+        var imageParts = 0
+        var fileParts = 0
+        var textChars = 0
+        preparedMessages.forEach { messageElement ->
+            val content = messageElement.jsonObject["content"]
+            when {
+                content is JsonArray -> {
+                    content.forEach { part ->
+                        val obj = part.jsonObject
+                        when (obj["type"]?.jsonPrimitive?.contentOrNull) {
+                            "image_url" -> imageParts++
+                            "file" -> fileParts++
+                            "text" -> textChars += obj["text"]?.jsonPrimitive?.contentOrNull?.length ?: 0
+                        }
+                    }
+                }
+                content != null -> textChars += content.jsonPrimitive.contentOrNull?.length ?: 0
+            }
+        }
+        Log.i(
+            TAG,
+            "Prepared chat request summary: model=$modelId, multimodal=$isMultimodal, messages=${preparedMessages.size}, imageParts=$imageParts, fileParts=$fileParts, textChars=$textChars"
+        )
     }
 }

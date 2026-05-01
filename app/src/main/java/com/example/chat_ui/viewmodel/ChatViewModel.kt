@@ -27,7 +27,10 @@ import com.example.chat_ui.utils.ImageProcessor
 import com.example.chat_ui.utils.MessagePreparer
 import com.example.chat_ui.utils.PromptPreferences
 import java.util.UUID
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -39,6 +42,8 @@ class ChatViewModel : ViewModel() {
     private val apiClient = ChatApiClient.getInstance()
     private val imageGenClient = ImageGenerationApiClient()
     private val TAG = "ChatViewModel"
+
+    private fun newMessageId(): String = "msg-${UUID.randomUUID()}"
 
     // UI State - synced with database
     var conversations by mutableStateOf<List<Conversation>>(emptyList())
@@ -107,12 +112,16 @@ class ChatViewModel : ViewModel() {
     // Job for tracking Firebase listeners
     private var firebaseListenerJob: kotlinx.coroutines.Job? = null
 
+    private var conversationsSyncStarted = false
+
     init {
-        // Load selected model from config
+        // Keep startup lightweight. Heavy Firebase listeners are started only when the Chat route is visible.
         selectedModelId = ConfigManager.get(ConfigManager.Keys.PUBLIC_LLM_ROUTER_ALIAS_ID, "omni")
-        // Fetch available models on init
-        fetchModels()
-        // Load conversations from database
+    }
+
+    fun startRealtimeSync() {
+        if (conversationsSyncStarted) return
+        conversationsSyncStarted = true
         loadConversationsFromDatabase()
     }
     
@@ -124,6 +133,84 @@ class ChatViewModel : ViewModel() {
         Log.d(TAG, "ViewModel cleared - all jobs cancelled")
     }
 
+    private fun updateAssistantMessageText(messageId: String, text: String, model: String? = null) {
+        messages = messages.map { message ->
+            if (!message.isUser && message.id == messageId) {
+                if (model != null) message.copy(content = text, model = model)
+                else message.copy(content = text)
+            } else {
+                message
+            }
+        }
+    }
+
+    private fun typewriterBatchSize(pendingLength: Int): Int {
+        return when {
+            pendingLength > 2400 -> 5
+            pendingLength > 1200 -> 4
+            pendingLength > 500 -> 3
+            pendingLength > 160 -> 2
+            else -> 1
+        }
+    }
+
+    private inner class TypewriterStream(
+        private val messageId: String,
+        private val model: String? = null
+    ) {
+        private val pending = StringBuilder()
+        private val displayed = StringBuilder()
+        private var completed = false
+        private var finishStarted = false
+
+        private val job: Job = viewModelScope.launch {
+            while (isActive && (!completed || pending.isNotEmpty())) {
+                if (pending.isEmpty()) {
+                    delay(12)
+                    continue
+                }
+
+                val take = minOf(typewriterBatchSize(pending.length), pending.length)
+                displayed.append(pending.substring(0, take))
+                pending.delete(0, take)
+                updateAssistantMessageText(messageId, displayed.toString(), model)
+                delay(14)
+            }
+        }
+
+        fun append(text: String) {
+            if (text.isNotEmpty()) pending.append(text)
+        }
+
+        suspend fun finish(finalText: String? = null) {
+            if (finishStarted) return
+            finishStarted = true
+
+            val expected = finalText.orEmpty()
+            if (expected.isNotEmpty()) {
+                val current = displayed.toString() + pending.toString()
+                when {
+                    expected.startsWith(current) -> pending.append(expected.substring(current.length))
+                    current.isBlank() -> pending.append(expected)
+                }
+            }
+            completed = true
+            job.join()
+        }
+
+        fun cancel() {
+            completed = true
+            job.cancel()
+        }
+    }
+
+    private suspend fun typewriterMessage(message: Message, fullText: String) {
+        messages = messages + message.copy(content = "")
+        val typewriter = TypewriterStream(message.id, message.model)
+        typewriter.append(fullText)
+        typewriter.finish(fullText)
+    }
+
     /** Load conversations from Firebase Realtime Database */
     @Suppress("UNCHECKED_CAST")
     private fun loadConversationsFromDatabase() {
@@ -132,23 +219,10 @@ class ChatViewModel : ViewModel() {
         
         firebaseListenerJob = viewModelScope.launch {
             try {
-                FirebaseDatabaseManager.getConversations().collectLatest { dbConversations ->
+                FirebaseDatabaseManager.getConversations(limit = 15).collectLatest { dbConversations ->
                     conversations =
                             dbConversations.map { convData ->
-                                val messages =
-                                        (convData["messages"] as? List<Map<String, Any>>)?.map {
-                                                msgData ->
-                                            Message(
-                                                    id = msgData["id"] as? String ?: "",
-                                                    content = msgData["content"] as? String ?: "",
-                                                    isUser = msgData["isUser"] as? Boolean ?: false,
-                                                    timestamp =
-                                                            (msgData["timestamp"] as? Number)
-                                                                    ?.toLong()
-                                                                    ?: 0L
-                                            )
-                                        }
-                                                ?: emptyList()
+                                val messages = emptyList<Message>()
 
                                 Conversation(
                                         id = convData["id"] as? String ?: "",
@@ -194,10 +268,32 @@ class ChatViewModel : ViewModel() {
         return selectedModelId == aliasId || selectedModelId.isBlank()
     }
 
-    /** Select a conversation */
+    /** Select a conversation and load its messages only on demand. */
+    @Suppress("UNCHECKED_CAST")
     fun selectConversation(conversation: Conversation) {
         currentConversation = conversation
         messages = conversation.messages
+
+        viewModelScope.launch {
+            val fullData = FirebaseDatabaseManager.getConversation(conversation.id) ?: return@launch
+            val loadedMessages = (fullData["messages"] as? List<Map<String, Any>>)
+                ?.map { msgData ->
+                    Message(
+                        id = msgData["id"] as? String ?: "",
+                        content = msgData["content"] as? String ?: "",
+                        isUser = msgData["isUser"] as? Boolean ?: false,
+                        timestamp = (msgData["timestamp"] as? Number)?.toLong() ?: 0L,
+                        generatedImages = (msgData["generatedImages"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+                        model = msgData["model"] as? String ?: ""
+                    )
+                }
+                ?: emptyList()
+
+            val loadedConversation = conversation.copy(messages = loadedMessages)
+            currentConversation = loadedConversation
+            messages = loadedMessages
+            conversations = conversations.map { if (it.id == conversation.id) loadedConversation else it }
+        }
     }
 
     /** Start a new chat */
@@ -211,20 +307,17 @@ class ChatViewModel : ViewModel() {
     fun deleteConversation(conversation: Conversation) {
         viewModelScope.launch {
             try {
-                // Delete from Realtime Database
                 FirebaseDatabaseManager.deleteConversation(conversation.id)
                 Log.i(TAG, "Deleted conversation ${conversation.id} from Realtime Database")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to delete conversation: ${e.message}", e)
             }
         }
-        // Update local state
         conversations = conversations.filter { it.id != conversation.id }
         if (currentConversation?.id == conversation.id) {
             newChat()
         }
     }
-
     /** Select a model */
     fun selectModel(modelId: String) {
         Log.d(TAG, "Selecting model: $modelId")
@@ -287,15 +380,15 @@ class ChatViewModel : ViewModel() {
             PromptPreferences.addToChatHistory(it, messageText)
         }
         
-        if (useStreaming) {
-            sendMessageStreaming(messageText)
+        if (useStreaming || pendingFiles.isNotEmpty()) {
+            sendMessageStreaming(messageText, context)
         } else {
             sendMessageNonStreaming(messageText)
         }
     }
 
     /** Send message with streaming (real-time tokens) */
-    private fun sendMessageStreaming(messageText: String) {
+    private fun sendMessageStreaming(messageText: String, context: Context? = null) {
         if (messageText.isBlank() && attachments.isEmpty() && pendingFiles.isEmpty()) return
 
         // Capture files before clearing
@@ -304,7 +397,7 @@ class ChatViewModel : ViewModel() {
         // Add user message with attachments and files
         val userMessage =
                 Message(
-                        id = System.currentTimeMillis().toString(),
+                        id = newMessageId(),
                         content = messageText,
                         isUser = true,
                         timestamp = System.currentTimeMillis(),
@@ -334,7 +427,7 @@ class ChatViewModel : ViewModel() {
         }
 
         // Add empty assistant message for streaming
-        val assistantMessageId = System.currentTimeMillis().toString()
+        val assistantMessageId = newMessageId()
         var assistantMessage =
                 Message(
                         id = assistantMessageId,
@@ -356,6 +449,7 @@ class ChatViewModel : ViewModel() {
         error = null
 
         streamingJob = viewModelScope.launch {
+            var typewriter: TypewriterStream? = null
             try {
                 // Build message history with files (exclude the empty assistant message)
                 val apiMessages =
@@ -367,8 +461,10 @@ class ChatViewModel : ViewModel() {
                             )
                         }
                 
-                // Check if we have multimodal content (images or PDFs)
-                val hasMultimodalContent = MessagePreparer.hasMultimodalContent(apiMessages)
+                val hasImages = MessagePreparer.hasImages(apiMessages)
+                val hasPdfs = MessagePreparer.hasPdfs(apiMessages)
+                val hasDocuments = MessagePreparer.hasDocuments(apiMessages)
+                logOutgoingFiles(apiMessages)
                 
                 // Check if MCP tools are available
                 val hasMcpTools = mcpToolsEnabled && MCPManager.hasConnectedServers() && MCPManager.getTotalToolCount() > 0
@@ -389,35 +485,77 @@ class ChatViewModel : ViewModel() {
                             val legacyMessages = apiMessages.map { 
                                 ChatApiClient.ChatMessage(it.role, it.content) 
                             }
-                            LlmRouter.selectModel(legacyMessages, hasMultimodalContent, hasMcpTools)
+                            LlmRouter.selectModel(legacyMessages, hasImages, hasMcpTools, hasDocuments)
                         } else {
                             selectedModelId
                         }
 
-                Log.i(TAG, "Starting stream with model: $modelToUse, multimodal: $hasMultimodalContent, tools: ${mcpTools?.size ?: 0}")
+                Log.i(TAG, "Starting stream with model: $modelToUse, images=$hasImages, pdfs=$hasPdfs, documents=$hasDocuments, tools=${mcpTools?.size ?: 0}")
+                typewriter = TypewriterStream(assistantMessageId, modelToUse)
+
+                val backendPdfFile = messageFiles.firstOrNull { it.isPdf() && !it.sourceUri.isNullOrBlank() }
+                if (
+                    backendPdfFile != null &&
+                    context != null &&
+                    providerConfig.provider == com.example.chat_ui.data.ApiProvider.HUGGINGFACE
+                ) {
+                    // الأمان: نرسل PDF كسيرفر-side multipart stream، بدون Base64 وبدون استخراج محلي.
+                    Log.i(
+                        TAG,
+                        "Sending PDF through backend multipart: name=${backendPdfFile.name}, mime=${backendPdfFile.mime}, bytes=${backendPdfFile.sizeBytes ?: 0}, model=$modelToUse"
+                    )
+                    when (
+                        val result = apiClient.chatCompletionWithPdfFile(
+                            context = context,
+                            fileUri = Uri.parse(backendPdfFile.sourceUri),
+                            fileName = backendPdfFile.name,
+                            mimeType = backendPdfFile.mime,
+                            sizeBytes = backendPdfFile.sizeBytes ?: -1L,
+                            message = messageText,
+                            model = modelToUse
+                        )
+                    ) {
+                        is ChatApiClient.ApiResult.Success -> {
+                            typewriter?.finish(result.data.content)
+                            isLoading = false
+                            updateCurrentConversation()
+                        }
+                        is ChatApiClient.ApiResult.Error -> {
+                            typewriter?.cancel()
+                            error = result.message
+                            isLoading = false
+                            val errorMessage =
+                                    Message(
+                                            id = assistantMessageId,
+                                            content = "⚠️ Error: ${result.message}",
+                                            isUser = false,
+                                            timestamp = System.currentTimeMillis(),
+                                            model = modelToUse
+                                    )
+                            messages = messages.dropLast(1) + errorMessage
+                            updateCurrentConversation()
+                        }
+                    }
+                    return@launch
+                }
 
                 // Collect stream events with multimodal support
                 ChatStreamingClient.chatCompletionStreamWithFiles(
                     messages = apiMessages,
                     model = modelToUse,
-                    isMultimodal = isModelMultimodal && hasMultimodalContent,
+                    isMultimodal = hasImages && (isOmniRouter() || isModelMultimodal || isVisionModel(modelToUse)),
                     tools = mcpTools
                 ).collect { event ->
                     when (event) {
                         is StreamEvent.Token -> {
-                            // Append token to assistant message
-                            assistantMessage =
-                                    assistantMessage.copy(
-                                            content = assistantMessage.content + event.text
-                                    )
-                            // Update messages list
-                            messages = messages.dropLast(1) + assistantMessage
+                            typewriter?.append(event.text)
                         }
                         is StreamEvent.Complete -> {
                             Log.i(
                                     TAG,
                                     "Stream complete. Full text length: ${event.fullText.length}"
                             )
+                            typewriter?.finish(event.fullText)
                             
                             // Check for MCP tool calls in the response
                             if (mcpToolsEnabled && MCPToolExecutor.containsToolCall(event.fullText)) {
@@ -429,6 +567,7 @@ class ChatViewModel : ViewModel() {
                         }
                         is StreamEvent.Error -> {
                             Log.e(TAG, "Stream error: ${event.error}")
+                            typewriter?.cancel()
                             error = event.error
                             isLoading = false
                             // Replace empty message with error
@@ -449,6 +588,7 @@ class ChatViewModel : ViewModel() {
                         }
                         is StreamEvent.ToolCall -> {}
                         is StreamEvent.ToolCallsComplete -> {
+                            typewriter?.finish(event.fullText)
                             Log.i(TAG, "Tool calls complete, executing tools...")
                             // Handle tool execution
                             if (mcpToolsEnabled) {
@@ -462,6 +602,7 @@ class ChatViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Streaming error: ${e.message}", e)
+                typewriter?.cancel()
                 error = e.message
                 isLoading = false
                 val errorMessage =
@@ -484,7 +625,7 @@ class ChatViewModel : ViewModel() {
         // Add user message with attachments
         val userMessage =
                 Message(
-                        id = System.currentTimeMillis().toString(),
+                        id = newMessageId(),
                         content = messageText,
                         isUser = true,
                         timestamp = System.currentTimeMillis(),
@@ -540,7 +681,6 @@ class ChatViewModel : ViewModel() {
                             )
                         }
 
-                // Check for images in messages
                 val hasImages = messages.any { msg -> msg.files.any { it.isImage() } }
                 
                 // Check if MCP tools are available
@@ -562,13 +702,13 @@ class ChatViewModel : ViewModel() {
                                 Message(
                                         id =
                                                 result.data.id.ifEmpty {
-                                                    System.currentTimeMillis().toString()
+                                                    newMessageId()
                                                 },
                                         content = result.data.content,
                                         isUser = false,
                                         timestamp = System.currentTimeMillis()
                                 )
-                        messages = messages + aiMessage
+                        typewriterMessage(aiMessage, result.data.content)
                         updateCurrentConversation()
                     }
                     is ChatApiClient.ApiResult.Error -> {
@@ -576,7 +716,7 @@ class ChatViewModel : ViewModel() {
                         // Add error message as AI response
                         val errorMessage =
                                 Message(
-                                        id = System.currentTimeMillis().toString(),
+                                        id = newMessageId(),
                                         content =
                                                 "⚠️ Error: ${result.message}\n\nPlease check your API settings.",
                                         isUser = false,
@@ -590,7 +730,7 @@ class ChatViewModel : ViewModel() {
                 error = e.message
                 val errorMessage =
                         Message(
-                                id = System.currentTimeMillis().toString(),
+                                id = newMessageId(),
                                 content = "⚠️ Error: ${e.message}",
                                 isUser = false,
                                 timestamp = System.currentTimeMillis()
@@ -638,7 +778,7 @@ class ChatViewModel : ViewModel() {
 
             val aiResponse =
                     Message(
-                            id = System.currentTimeMillis().toString(),
+                            id = newMessageId(),
                             content =
                                     buildString {
                                         appendLine("👋 مرحباً! أنا نموذج **$selectedModelId**.")
@@ -666,7 +806,11 @@ class ChatViewModel : ViewModel() {
 
     /** Update current conversation and save to database */
     private fun updateCurrentConversation() {
-        currentConversation = currentConversation?.copy(messages = messages)
+        currentConversation = currentConversation?.copy(
+            messages = messages,
+            model = selectedModelId,
+            timestamp = System.currentTimeMillis()
+        )
         currentConversation?.let { conv ->
             conversations = conversations.map { if (it.id == conv.id) conv else it }
             // Save to database
@@ -685,7 +829,9 @@ class ChatViewModel : ViewModel() {
                                     "id" to msg.id,
                                     "content" to msg.content,
                                     "isUser" to msg.isUser,
-                                    "timestamp" to msg.timestamp
+                                    "timestamp" to msg.timestamp,
+                                    "generatedImages" to msg.generatedImages,
+                                    "model" to msg.model
                             )
                         }
 
@@ -736,11 +882,25 @@ class ChatViewModel : ViewModel() {
     private fun clearPendingFiles() {
         pendingFiles = emptyList()
     }
+
+    private fun logOutgoingFiles(apiMessages: List<MessagePreparer.ChatMessage>) {
+        val files = apiMessages.flatMap { it.files }
+        if (files.isEmpty()) {
+            Log.i(TAG, "Outgoing chat files: none")
+            return
+        }
+        files.forEach { file ->
+            Log.i(
+                    TAG,
+                    "Outgoing chat file: name=${file.name}, mime=${file.mime}, isImage=${file.isImage()}, isPdf=${file.isPdf()}, base64Chars=${file.value.length}, streamUri=${!file.sourceUri.isNullOrBlank()}, bytes=${file.sizeBytes ?: 0}, extractedTextChars=${file.extractedText?.length ?: 0}"
+            )
+        }
+    }
     
     /** Add a file for multimodal API */
     fun addPendingFile(file: MessageFile) {
         pendingFiles = pendingFiles + file
-        Log.i(TAG, "Added pending file: ${file.name} (${file.mime})")
+        Log.i(TAG, "Added pending file: name=${file.name}, mime=${file.mime}, base64Chars=${file.value.length}, streamUri=${!file.sourceUri.isNullOrBlank()}, bytes=${file.sizeBytes ?: 0}")
     }
     
     /** Remove a pending file */
@@ -762,7 +922,7 @@ class ChatViewModel : ViewModel() {
                 
                 if (processedFile != null) {
                     pendingFiles = pendingFiles + processedFile
-                    Log.i(TAG, "Image processed and added: ${processedFile.name}")
+                    Log.i(TAG, "Image processed and added: name=${processedFile.name}, mime=${processedFile.mime}, base64Chars=${processedFile.value.length}")
                 } else {
                     error = "Failed to process image"
                 }
@@ -783,7 +943,7 @@ class ChatViewModel : ViewModel() {
                 val file = MessageFile.fromUri(context, uri, fileName, mimeType)
                 if (file != null) {
                     pendingFiles = pendingFiles + file
-                    Log.i(TAG, "Text file added: ${file.name}")
+                    Log.i(TAG, "File added: name=${file.name}, mime=${file.mime}, base64Chars=${file.value.length}, streamUri=${!file.sourceUri.isNullOrBlank()}, bytes=${file.sizeBytes ?: 0}")
                 } else {
                     error = "Failed to read file"
                 }
@@ -815,16 +975,24 @@ class ChatViewModel : ViewModel() {
             
             try {
                 // Execute all tool calls
-                val results = MCPToolExecutor.executeAllToolCalls(responseContent)
+                val results = MCPToolExecutor.executeAllToolCallsDetailed(responseContent)
                 
                 if (results.isNotEmpty()) {
                     // Format results
                     val formattedResults = MCPToolExecutor.formatToolResults(results)
+                    val toolDebugFold = MCPToolExecutor.buildDebugFoldContent(results)
+                    val toolOutputFold = MCPToolExecutor.buildOutputFoldContent(results)
                     
                     Log.i(TAG, "Tool execution complete. Results: ${formattedResults.take(200)}...")
                     
                     // Send results back to LLM for final answer
-                    sendToolResultsToLLM(responseContent, formattedResults, originalMessageId)
+                    sendToolResultsToLLM(
+                        originalResponse = responseContent,
+                        toolResults = formattedResults,
+                        messageId = originalMessageId,
+                        toolDebugFold = toolDebugFold,
+                        toolOutputFold = toolOutputFold
+                    )
                 } else {
                     Log.w(TAG, "No tool results received")
                     isExecutingTool = false
@@ -841,7 +1009,13 @@ class ChatViewModel : ViewModel() {
     }
     
     /** Send tool results back to LLM for final answer */
-    private fun sendToolResultsToLLM(originalResponse: String, toolResults: String, messageId: String) {
+    private fun sendToolResultsToLLM(
+        originalResponse: String,
+        toolResults: String,
+        messageId: String,
+        toolDebugFold: String,
+        toolOutputFold: String
+    ) {
         viewModelScope.launch {
             try {
                 // Build messages including tool results
@@ -885,7 +1059,15 @@ class ChatViewModel : ViewModel() {
                 }
                 
                 // Wrap tool call and results in collapsible tags
-                val toolCallWithResults = "$originalResponse\n<search_results>\n$toolResults\n</search_results>\n\n"
+                val toolCallWithResults = buildString {
+                    appendLine("<tool_call>")
+                    appendLine(toolDebugFold)
+                    appendLine("</tool_call>")
+                    appendLine("<search_results>")
+                    appendLine(toolOutputFold)
+                    appendLine("</search_results>")
+                    appendLine()
+                }
                 
                 // Stream the continuation without tools (to avoid loop)
                 var continuationText = ""
@@ -963,44 +1145,68 @@ class ChatViewModel : ViewModel() {
     }
     
     /**
-     * Regenerate the last assistant message - deletes old response and generates new one
+     * Regenerate the last assistant message after optionally editing the last user prompt.
+     * Uses the currently selected model and current MCP toggle state, even mid-conversation.
      */
-    fun regenerateLastMessage() {
-        // Find the last assistant message
-        val lastAssistantIndex = messages.indexOfLast { !it.isUser }
-        if (lastAssistantIndex < 0) return
-        
-        // Remove the last assistant message
-        messages = messages.take(lastAssistantIndex)
+    fun regenerateLastMessage(editedPrompt: String? = null) {
+        val lastUserIndex = messages.indexOfLast { it.isUser }
+        if (lastUserIndex < 0) return
+
+        val lastUserMessage = messages[lastUserIndex]
+        val promptToUse = editedPrompt?.trim().takeUnless { it.isNullOrBlank() } ?: lastUserMessage.content
+        val updatedUserMessage = lastUserMessage.copy(
+            content = promptToUse,
+            timestamp = System.currentTimeMillis()
+        )
+
+        messages = messages.take(lastUserIndex) + updatedUserMessage
+
+        currentConversation = currentConversation?.copy(
+            title = promptToUse.take(30) + if (promptToUse.length > 30) "..." else "",
+            messages = messages,
+            model = selectedModelId,
+            timestamp = System.currentTimeMillis()
+        )
         updateCurrentConversation()
-        
-        // Create new empty assistant message for streaming
+
+        if (useStreaming) {
+            regenerateStreamingFromCurrentMessages()
+        } else {
+            regenerateNonStreamingFromCurrentMessages()
+        }
+    }
+
+    fun regenerateLastMessage() {
+        regenerateLastMessage(null)
+    }
+
+    private fun regenerateStreamingFromCurrentMessages() {
         var assistantMessage = Message(
             id = UUID.randomUUID().toString(),
             content = "",
             isUser = false,
-            timestamp = System.currentTimeMillis()
+            timestamp = System.currentTimeMillis(),
+            model = selectedModelId
         )
+        val assistantMessageId = assistantMessage.id
         messages = messages + assistantMessage
-        
-        // Start regeneration
+
+        val providerConfig = ConfigManager.getProviderConfig()
+        if (!providerConfig.isValid()) {
+            assistantMessage = assistantMessage.copy(
+                content = "⚠️ لم يتم تكوين مزود الذكاء الاصطناعي بعد. افتح الإعدادات ثم جرّب إعادة التوليد مرة أخرى."
+            )
+            messages = messages.dropLast(1) + assistantMessage
+            updateCurrentConversation()
+            return
+        }
+
         isLoading = true
         error = null
-        
-        viewModelScope.launch {
+
+        streamingJob = viewModelScope.launch {
+            var typewriter: TypewriterStream? = null
             try {
-                val apiKey = ConfigManager.openAiApiKey
-                if (apiKey.isBlank()) {
-                    // Simulated response for demo
-                    assistantMessage = assistantMessage.copy(
-                        content = "This is a regenerated response (simulated)."
-                    )
-                    messages = messages.dropLast(1) + assistantMessage
-                    updateCurrentConversation()
-                    return@launch
-                }
-                
-                // Build message history (without the new empty assistant message)
                 val apiMessages = messages.dropLast(1).map { msg ->
                     MessagePreparer.ChatMessage(
                         role = if (msg.isUser) "user" else "assistant",
@@ -1008,48 +1214,143 @@ class ChatViewModel : ViewModel() {
                         files = msg.files
                     )
                 }
-                
-                // Check for multimodal content
-                val hasMultimodal = MessagePreparer.hasMultimodalContent(apiMessages)
-                
-                // Check if MCP tools are available
+
+                val hasImages = MessagePreparer.hasImages(apiMessages)
+                val hasPdfs = MessagePreparer.hasPdfs(apiMessages)
+                val hasDocuments = MessagePreparer.hasDocuments(apiMessages)
+                logOutgoingFiles(apiMessages)
                 val hasMcpTools = mcpToolsEnabled && MCPManager.hasConnectedServers() && MCPManager.getTotalToolCount() > 0
-                
-                // Use LLM Router if Omni - pass hasImages and hasTools for model selection
-                val modelToUse = if (isOmniRouter()) {
-                    val legacyMessages = apiMessages.map { 
-                        ChatApiClient.ChatMessage(it.role, it.content) 
-                    }
-                    LlmRouter.selectModel(legacyMessages, hasMultimodal, hasMcpTools)
+                val mcpTools = if (hasMcpTools) MCPManager.getToolsForLLM() else null
+
+                val providerIsGoogleDirect = providerConfig.provider == com.example.chat_ui.data.ApiProvider.GOOGLE_AI_STUDIO
+                val modelToUse = if (isOmniRouter() && !providerIsGoogleDirect) {
+                    val legacyMessages = apiMessages.map { ChatApiClient.ChatMessage(it.role, it.content) }
+                    LlmRouter.selectModel(legacyMessages, hasImages, hasMcpTools, hasDocuments)
                 } else {
                     selectedModelId
                 }
-                
-                // Stream new response
+                Log.i(TAG, "Regenerating stream with model: $modelToUse, images=$hasImages, pdfs=$hasPdfs, documents=$hasDocuments, tools=${mcpTools?.size ?: 0}")
+                typewriter = TypewriterStream(assistantMessageId, modelToUse)
+
                 ChatStreamingClient.chatCompletionStreamWithFiles(
                     messages = apiMessages,
                     model = modelToUse,
-                    isMultimodal = hasMultimodal
+                    isMultimodal = hasImages && (isOmniRouter() || isModelMultimodal || isVisionModel(modelToUse)),
+                    tools = mcpTools
                 ).collect { event ->
                     when (event) {
                         is StreamEvent.Token -> {
-                            assistantMessage = assistantMessage.copy(
-                                content = assistantMessage.content + event.text
-                            )
-                            messages = messages.dropLast(1) + assistantMessage
+                            typewriter?.append(event.text)
                         }
                         is StreamEvent.Complete -> {
-                            updateCurrentConversation()
+                            typewriter?.finish(event.fullText)
+                            if (mcpToolsEnabled && MCPToolExecutor.containsToolCall(event.fullText)) {
+                                handleToolCalls(event.fullText, assistantMessageId)
+                            } else {
+                                isLoading = false
+                                updateCurrentConversation()
+                            }
                         }
                         is StreamEvent.Error -> {
+                            Log.e(TAG, "Regeneration stream error: ${event.error}")
+                            typewriter?.cancel()
                             error = event.error
+                            isLoading = false
+                            assistantMessage = assistantMessage.copy(content = "⚠️ Error: ${event.error}")
+                            messages = messages.dropLast(1) + assistantMessage
+                            updateCurrentConversation()
                         }
-                        else -> { /* KeepAlive, RouterMetadata, Status - ignore */ }
+                        is StreamEvent.ToolCallsComplete -> {
+                            typewriter?.finish(event.fullText)
+                            if (mcpToolsEnabled) {
+                                handleToolCalls(event.fullText, assistantMessageId)
+                            } else {
+                                isLoading = false
+                                updateCurrentConversation()
+                            }
+                        }
+                        else -> {}
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Regeneration failed: ${e.message}", e)
+                typewriter?.cancel()
                 error = "Regeneration failed: ${e.message}"
+                isLoading = false
+                assistantMessage = assistantMessage.copy(content = "⚠️ Error: ${e.message}")
+                messages = messages.dropLast(1) + assistantMessage
+                updateCurrentConversation()
+            }
+        }
+    }
+
+    private fun regenerateNonStreamingFromCurrentMessages() {
+        isLoading = true
+        error = null
+
+        viewModelScope.launch {
+            try {
+                val providerConfig = ConfigManager.getProviderConfig()
+                if (!providerConfig.isValid()) {
+                    messages = messages + Message(
+                        id = newMessageId(),
+                        content = "⚠️ لم يتم تكوين مزود الذكاء الاصطناعي بعد. افتح الإعدادات ثم جرّب إعادة التوليد مرة أخرى.",
+                        isUser = false,
+                        timestamp = System.currentTimeMillis(),
+                        model = selectedModelId
+                    )
+                    updateCurrentConversation()
+                    return@launch
+                }
+
+                val apiMessages = messages.map { msg ->
+                    ChatApiClient.ChatMessage(
+                        role = if (msg.isUser) "user" else "assistant",
+                        content = msg.content
+                    )
+                }
+
+                val hasImages = messages.any { msg -> msg.files.any { it.isImage() } }
+                val hasMcpTools = mcpToolsEnabled && MCPManager.hasConnectedServers() && MCPManager.getTotalToolCount() > 0
+                val modelToUse = if (isOmniRouter()) {
+                    LlmRouter.selectModel(apiMessages, hasImages, hasMcpTools)
+                } else {
+                    selectedModelId
+                }
+
+                when (val result = apiClient.chatCompletion(messages = apiMessages, model = modelToUse)) {
+                    is ChatApiClient.ApiResult.Success -> {
+                        typewriterMessage(Message(
+                            id = result.data.id.ifEmpty { newMessageId() },
+                            content = result.data.content,
+                            isUser = false,
+                            timestamp = System.currentTimeMillis(),
+                            model = modelToUse
+                        ), result.data.content)
+                        updateCurrentConversation()
+                    }
+                    is ChatApiClient.ApiResult.Error -> {
+                        error = result.message
+                        messages = messages + Message(
+                            id = newMessageId(),
+                            content = "⚠️ Error: ${result.message}",
+                            isUser = false,
+                            timestamp = System.currentTimeMillis(),
+                            model = modelToUse
+                        )
+                        updateCurrentConversation()
+                    }
+                }
+            } catch (e: Exception) {
+                error = e.message
+                messages = messages + Message(
+                    id = newMessageId(),
+                    content = "⚠️ Error: ${e.message}",
+                    isUser = false,
+                    timestamp = System.currentTimeMillis(),
+                    model = selectedModelId
+                )
+                updateCurrentConversation()
             } finally {
                 isLoading = false
             }

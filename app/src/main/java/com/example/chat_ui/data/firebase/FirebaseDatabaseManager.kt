@@ -113,7 +113,7 @@ object FirebaseDatabaseManager {
     }
 
     /** Get conversations as Flow */
-    fun getConversations(): Flow<List<Map<String, Any>>> = callbackFlow {
+    fun getConversations(limit: Int = 20): Flow<List<Map<String, Any>>> = callbackFlow {
         var userId = FirebaseManager.getCurrentUserId()
 
         // If no user, try to sign in anonymously
@@ -140,6 +140,7 @@ object FirebaseDatabaseManager {
                 FirebaseManager.database
                         .getReference("conversations/$userId")
                         .orderByChild("updatedAt")
+                        .limitToLast(limit)
 
         val listener =
                 object : ValueEventListener {
@@ -189,10 +190,25 @@ object FirebaseDatabaseManager {
             imageId: String,
             prompt: String,
             imageUrl: String,
-            model: String
+            model: String,
+            cloudinaryPublicId: String? = null,
+            width: Int? = null,
+            height: Int? = null
     ): Boolean {
         return try {
-            val userId = FirebaseManager.getCurrentUserId()
+            var userId = FirebaseManager.getCurrentUserId()
+            if (userId == null) {
+                try {
+                    val result = FirebaseManager.auth.signInAnonymously().await()
+                    userId = result.user?.uid
+                    Log.i(TAG, "Signed in anonymously for generated image save: $userId")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to sign in anonymously for image save: ${e.message}", e)
+                    onError?.invoke("Authentication failed")
+                    return false
+                }
+            }
+
             if (userId == null) {
                 onError?.invoke("User not authenticated")
                 return false
@@ -205,6 +221,9 @@ object FirebaseDatabaseManager {
                             "prompt" to prompt,
                             "imageUrl" to imageUrl,
                             "model" to model,
+                            "cloudinaryPublicId" to cloudinaryPublicId,
+                            "width" to width,
+                            "height" to height,
                             "createdAt" to System.currentTimeMillis()
                     )
 
@@ -219,7 +238,7 @@ object FirebaseDatabaseManager {
     }
 
     /** Get generated images as Flow */
-    fun getGeneratedImages(): Flow<List<Map<String, Any>>> = callbackFlow {
+    fun getGeneratedImages(limit: Int = 60): Flow<List<Map<String, Any>>> = callbackFlow {
         val userId = FirebaseManager.getCurrentUserId()
         if (userId == null) {
             trySend(emptyList())
@@ -228,7 +247,10 @@ object FirebaseDatabaseManager {
         }
 
         val imagesRef =
-                FirebaseManager.database.getReference("images/$userId").orderByChild("createdAt")
+                FirebaseManager.database
+                        .getReference("images/$userId")
+                        .orderByChild("createdAt")
+                        .limitToLast(limit)
 
         val listener =
                 object : ValueEventListener {
@@ -250,5 +272,40 @@ object FirebaseDatabaseManager {
         imagesRef.addValueEventListener(listener)
 
         awaitClose { imagesRef.removeEventListener(listener) }
+    }
+
+
+    /** Load one full conversation only when the user opens it. */
+    suspend fun getConversation(conversationId: String): Map<String, Any>? {
+        return try {
+            val userId = FirebaseManager.getCurrentUserId() ?: return null
+            val snapshot = FirebaseManager.database
+                    .getReference("conversations/$userId/$conversationId")
+                    .get()
+                    .await()
+            @Suppress("UNCHECKED_CAST")
+            snapshot.value as? Map<String, Any>
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load conversation $conversationId: ${e.message}", e)
+            null
+        }
+    }
+
+    /** Delete generated image metadata from Realtime Database. */
+    suspend fun deleteGeneratedImage(imageId: String): Boolean {
+        return try {
+            val userId = FirebaseManager.getCurrentUserId()
+            if (userId == null) {
+                onError?.invoke("User not authenticated")
+                return false
+            }
+            FirebaseManager.database.getReference("images/$userId/$imageId").removeValue().await()
+            Log.i(TAG, "Generated image deleted from Realtime Database: $imageId")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete generated image: ${e.message}", e)
+            onError?.invoke("Failed to delete image: ${e.message}")
+            false
+        }
     }
 }

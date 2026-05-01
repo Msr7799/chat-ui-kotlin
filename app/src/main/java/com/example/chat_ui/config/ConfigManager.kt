@@ -55,7 +55,13 @@ object ConfigManager {
         const val OPENAI_BASE_URL = "OPENAI_BASE_URL"
         const val OPENAI_API_KEY = "OPENAI_API_KEY"
         const val GOOGLE_STUDIO_API_KEY = "GOOGLE_STUDIO_API_KEY"
+        const val TAVILY_API_KEY = "TAVILY_API_KEY"
+        const val TAVILY_MCP_URL = "TAVILY_MCP_URL"
         const val USE_GOOGLE_AUTH = "USE_GOOGLE_AUTH"
+        const val HUGGINGFACE_BASE_URL = "HUGGINGFACE_BASE_URL"
+        const val GOOGLE_AI_STUDIO_BASE_URL = "GOOGLE_AI_STUDIO_BASE_URL"
+        const val HUGGINGFACE_DEFAULT_MODEL = "HUGGINGFACE_DEFAULT_MODEL"
+        const val GOOGLE_AI_STUDIO_DEFAULT_MODEL = "GOOGLE_AI_STUDIO_DEFAULT_MODEL"
 
         // App Configuration
         const val PUBLIC_APP_NAME = "PUBLIC_APP_NAME"
@@ -132,6 +138,7 @@ object ConfigManager {
         }
 
         migrateSensitiveKeysIfNeeded()
+        migrateLegacyProviderSettingsIfNeeded()
 
         // Load default config from assets
         try {
@@ -151,12 +158,15 @@ object ConfigManager {
             // local.properties is optional
         }
 
+        repairBackendProxySettingsIfNeeded()
+
         isInitialized = true
     }
 
     private fun isSensitiveKey(key: String): Boolean {
         return key == Keys.OPENAI_API_KEY || 
-               key == Keys.GOOGLE_STUDIO_API_KEY || 
+               key == Keys.GOOGLE_STUDIO_API_KEY ||
+               key == Keys.TAVILY_API_KEY ||
                key == Keys.CLOUDINARY_API_SECRET
     }
 
@@ -167,7 +177,8 @@ object ConfigManager {
 
         val sensitiveKeys = listOf(
             Keys.OPENAI_API_KEY, 
-            Keys.GOOGLE_STUDIO_API_KEY, 
+            Keys.GOOGLE_STUDIO_API_KEY,
+            Keys.TAVILY_API_KEY,
             Keys.CLOUDINARY_API_SECRET
         )
         
@@ -179,6 +190,69 @@ object ConfigManager {
                     sharedPrefs.edit().remove(key).apply()
                 }
             }
+        }
+    }
+
+    private fun migrateLegacyProviderSettingsIfNeeded() {
+        if (!::sharedPrefs.isInitialized) return
+
+        val selectedProvider =
+            ApiProvider.fromString(sharedPrefs.getString(Keys.API_PROVIDER, ApiProvider.HUGGINGFACE.name) ?: ApiProvider.HUGGINGFACE.name)
+        val legacyBaseUrl = sharedPrefs.getString(Keys.OPENAI_BASE_URL, "").orEmpty()
+        val legacyDefaultModel = sharedPrefs.getString(Keys.DEFAULT_MODEL, "").orEmpty()
+
+        when (selectedProvider) {
+            ApiProvider.HUGGINGFACE -> {
+                if (legacyBaseUrl.isNotBlank() && !sharedPrefs.contains(Keys.HUGGINGFACE_BASE_URL)) {
+                    sharedPrefs.edit().putString(Keys.HUGGINGFACE_BASE_URL, legacyBaseUrl).apply()
+                }
+                if (legacyDefaultModel.isNotBlank() && !sharedPrefs.contains(Keys.HUGGINGFACE_DEFAULT_MODEL)) {
+                    sharedPrefs.edit().putString(Keys.HUGGINGFACE_DEFAULT_MODEL, legacyDefaultModel).apply()
+                }
+            }
+            ApiProvider.GOOGLE_AI_STUDIO -> {
+                if (legacyBaseUrl.isNotBlank() && !sharedPrefs.contains(Keys.GOOGLE_AI_STUDIO_BASE_URL)) {
+                    sharedPrefs.edit().putString(Keys.GOOGLE_AI_STUDIO_BASE_URL, legacyBaseUrl).apply()
+                }
+                if (legacyDefaultModel.isNotBlank() && !sharedPrefs.contains(Keys.GOOGLE_AI_STUDIO_DEFAULT_MODEL)) {
+                    sharedPrefs.edit().putString(Keys.GOOGLE_AI_STUDIO_DEFAULT_MODEL, legacyDefaultModel).apply()
+                }
+            }
+        }
+    }
+
+    private fun repairBackendProxySettingsIfNeeded() {
+        val bundledBackendUrl = defaultConfig.getProperty(Keys.HUGGINGFACE_BASE_URL, "")
+            .ifBlank { defaultConfig.getProperty(Keys.OPENAI_BASE_URL, "") }
+            .trim()
+
+        if (bundledBackendUrl.isBlank() || bundledBackendUrl.contains("router.huggingface.co")) {
+            return
+        }
+
+        fun isDirectHuggingFaceUrl(value: String?): Boolean {
+            return value.orEmpty().contains("router.huggingface.co", ignoreCase = true)
+        }
+
+        val edit = sharedPrefs.edit()
+        var changed = false
+
+        if (isDirectHuggingFaceUrl(sharedPrefs.getString(Keys.HUGGINGFACE_BASE_URL, null))) {
+            edit.putString(Keys.HUGGINGFACE_BASE_URL, bundledBackendUrl)
+            changed = true
+        }
+        if (isDirectHuggingFaceUrl(sharedPrefs.getString(Keys.OPENAI_BASE_URL, null))) {
+            edit.putString(Keys.OPENAI_BASE_URL, bundledBackendUrl)
+            changed = true
+        }
+        if (isDirectHuggingFaceUrl(sharedPrefs.getString(Keys.LLM_ROUTER_ARCH_BASE_URL, null))) {
+            edit.putString(Keys.LLM_ROUTER_ARCH_BASE_URL, bundledBackendUrl)
+            changed = true
+        }
+
+        if (changed) {
+            edit.apply()
+            Log.i(TAG, "Repaired direct HuggingFace URLs to backend proxy")
         }
     }
 
@@ -280,7 +354,7 @@ object ConfigManager {
 
     // Convenience properties
     val openAiBaseUrl: String
-        get() = get(Keys.OPENAI_BASE_URL, "https://router.huggingface.co/v1")
+        get() = getBaseUrlForProvider(ApiProvider.HUGGINGFACE)
 
     val openAiApiKey: String
         get() = get(Keys.OPENAI_API_KEY, "")
@@ -288,11 +362,17 @@ object ConfigManager {
     val googleStudioApiKey: String
         get() = get(Keys.GOOGLE_STUDIO_API_KEY, "")
 
+    val tavilyApiKey: String
+        get() = get(Keys.TAVILY_API_KEY, "")
+
+    val tavilyMcpUrl: String
+        get() = get(Keys.TAVILY_MCP_URL, "")
+
     val appName: String
         get() = get(Keys.PUBLIC_APP_NAME, "Chat UI")
 
     val defaultModel: String
-        get() = get(Keys.DEFAULT_MODEL, "gpt-4")
+        get() = getDefaultModelForProvider(getCurrentProvider())
 
     val isDarkModeEnabled: Boolean
         get() = getBoolean(Keys.ENABLE_DARK_MODE, true)
@@ -347,14 +427,43 @@ object ConfigManager {
         return get(key, "")
     }
 
+    private fun getBaseUrlKeyForProvider(provider: ApiProvider): String {
+        return when (provider) {
+            ApiProvider.HUGGINGFACE -> Keys.HUGGINGFACE_BASE_URL
+            ApiProvider.GOOGLE_AI_STUDIO -> Keys.GOOGLE_AI_STUDIO_BASE_URL
+        }
+    }
+
+    private fun getDefaultModelKeyForProvider(provider: ApiProvider): String {
+        return when (provider) {
+            ApiProvider.HUGGINGFACE -> Keys.HUGGINGFACE_DEFAULT_MODEL
+            ApiProvider.GOOGLE_AI_STUDIO -> Keys.GOOGLE_AI_STUDIO_DEFAULT_MODEL
+        }
+    }
+
+    fun getCurrentProvider(): ApiProvider {
+        val providerStr = get(Keys.API_PROVIDER, ApiProvider.HUGGINGFACE.name)
+        return ApiProvider.fromString(providerStr)
+    }
+
     /**
      * Get the base URL that would be used for a given provider based on persistence logic.
      * Note: This function respects the global OPENAI_BASE_URL override if present.
      */
     fun getBaseUrlForProvider(provider: ApiProvider): String {
-        val baseOverride = get(Keys.OPENAI_BASE_URL, "")
-        // If there's a global override, use it, otherwise use the provider's default URL
-        return if (baseOverride.isNotBlank()) baseOverride else provider.defaultBaseUrl
+        val providerSpecificBaseUrl = get(getBaseUrlKeyForProvider(provider), "")
+        if (providerSpecificBaseUrl.isNotBlank()) {
+            return providerSpecificBaseUrl
+        }
+
+        if (provider == ApiProvider.HUGGINGFACE) {
+            val legacyBaseOverride = get(Keys.OPENAI_BASE_URL, "")
+            if (legacyBaseOverride.isNotBlank()) {
+                return legacyBaseOverride
+            }
+        }
+
+        return provider.defaultBaseUrl
     }
     
     /**
@@ -362,6 +471,11 @@ object ConfigManager {
      * Since DEFAULT_MODEL is a single key, we fetch the saved value, or the provider's default model hint.
      */
     fun getDefaultModelForProvider(provider: ApiProvider): String {
+        val providerDefault = get(getDefaultModelKeyForProvider(provider), "")
+        if (providerDefault.isNotBlank()) {
+            return providerDefault
+        }
+
         val globalDefault = get(Keys.DEFAULT_MODEL, "")
         if (globalDefault.isNotBlank()) {
             return globalDefault
@@ -378,8 +492,7 @@ object ConfigManager {
      * Build ProviderConfig from persisted settings
      */
     fun getProviderConfig(): ProviderConfig {
-        val providerStr = get(Keys.API_PROVIDER, ApiProvider.HUGGINGFACE.name)
-        val provider = ApiProvider.fromString(providerStr)
+        val provider = getCurrentProvider()
 
         val baseUrl = getBaseUrlForProvider(provider)
         val apiKey = getApiKeyForProvider(provider)
@@ -399,17 +512,16 @@ object ConfigManager {
      */
     fun saveProviderConfig(config: ProviderConfig) {
         set(Keys.API_PROVIDER, config.provider.name)
-        // OPENAI_BASE_URL is a global override field, saved regardless of provider
-        set(Keys.OPENAI_BASE_URL, config.baseUrl) 
+        set(getBaseUrlKeyForProvider(config.provider), config.baseUrl)
+        if (config.provider == ApiProvider.HUGGINGFACE) {
+            // Keep the legacy key in sync for older call sites and config files.
+            set(Keys.OPENAI_BASE_URL, config.baseUrl)
+        }
         
         if (config.provider == ApiProvider.GOOGLE_AI_STUDIO) {
             set(Keys.GOOGLE_STUDIO_API_KEY, config.apiKey)
-            // Clear the HuggingFace field when switching to Google, to keep things clean
-            remove(Keys.OPENAI_API_KEY)
         } else {
             set(Keys.OPENAI_API_KEY, config.apiKey)
-            // Clear the Google key field when switching away
-            remove(Keys.GOOGLE_STUDIO_API_KEY)
         }
         setBoolean(Keys.USE_GOOGLE_AUTH, config.useGoogleAuth)
     }
@@ -454,23 +566,34 @@ object ConfigManager {
      * 2. config.properties file
      */
     fun getProviderConfigWithApiKey(context: Context): ProviderConfig {
-        val baseConfig = getProviderConfig()
-        
-        // If using Google AI Studio and no API key is set by user
-        if (baseConfig.provider == ApiProvider.GOOGLE_AI_STUDIO && 
-            baseConfig.apiKey.isBlank()) {
-            
-            // Try to load from config.properties
-            val fileApiKey = getGoogleStudioApiKeyFromFile(context)
-            if (fileApiKey.isNotBlank()) {
-                Log.i(TAG, "Using Google AI Studio API key from config.properties")
-                return baseConfig.copy(apiKey = fileApiKey)
-            } else {
-                Log.w(TAG, "No Google AI Studio API key found in SharedPreferences or config.properties")
-            }
+        context.hashCode()
+        return getProviderConfig()
+    }
+
+    /**
+     * Resolve Tavily MCP URL.
+     *
+     * Priority:
+     * 1. Explicit TAVILY_MCP_URL
+     * 2. Construct from TAVILY_API_KEY
+     */
+    fun getResolvedTavilyMcpUrl(): String {
+        val explicitUrl = get(Keys.TAVILY_MCP_URL, "").trim()
+        if (explicitUrl.isNotBlank()) {
+            return explicitUrl
         }
-        
-        return baseConfig
+
+        val backendUrl = getBaseUrlForProvider(ApiProvider.HUGGINGFACE).trimEnd('/')
+        if (backendUrl.isNotBlank()) {
+            return "$backendUrl/mcp/tavily"
+        }
+
+        val apiKey = get(Keys.TAVILY_API_KEY, "").trim()
+        if (apiKey.isBlank()) {
+            return ""
+        }
+
+        return "https://mcp.tavily.com/mcp/?tavilyApiKey=$apiKey"
     }
     
     // ========== Google Gemini Configuration ==========
